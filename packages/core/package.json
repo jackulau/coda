@@ -1,0 +1,30 @@
+{
+  "name": "@coda/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./workspace": "./src/workspace/index.ts",
+    "./project": "./src/project/index.ts",
+    "./pty": "./src/pty/index.ts",
+    "./github": "./src/github/index.ts",
+    "./port": "./src/port/index.ts",
+    "./protocol": "./src/protocol/index.ts",
+    "./resource": "./src/resource/registry.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "bun-types": "^1.3.10",
+    "typescript": "^5.6.3"
+  }
+}

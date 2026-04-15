@@ -1,0 +1,40 @@
+# Spec and planning docs
+spec.md
+specs/
+plans/
+tasks/
+STATUS.yml
+STATUS.md
+.spec/
+.plans/
+.execution/
+lessons.md
+notes.md
+todo.md
+
+# Claude Code dev files
+.claude/
+.claude-workspace/
+CLAUDE.md
+AGENTS.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.zed/
+
+# Dependencies
+node_modules/
+.bun/
+
+# Build
+dist/
+build/
+target/
+*.log

@@ -1,0 +1,37 @@
+{
+  "name": "@coda/app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:bun:unit": "bun test src",
+    "test:e2e": "playwright test",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@coda/core": "workspace:*",
+    "@coda/ui": "workspace:*",
+    "@tauri-apps/api": "^2.1.1",
+    "solid-js": "^1.9.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@solidjs/testing-library": "^0.8.10",
+    "@tauri-apps/cli": "^2.1.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@types/node": "^22.10.2",
+    "@vitest/coverage-v8": "^2.1.8",
+    "bun-types": "^1.3.10",
+    "happy-dom": "^15.11.7",
+    "playwright": "^1.57.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vite-plugin-solid": "^2.11.0",
+    "vitest": "^2.1.8"
+  }
+}

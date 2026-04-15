@@ -1,0 +1,10 @@
+{
+  "name": "@coda/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "test": "echo 'Rust tests via cargo' && exit 0",
+    "tauri:build": "cd src-tauri && cargo build --release",
+    "tauri:test": "cd src-tauri && cargo test"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": false,
+    "tsBuildInfoFile": null,
+    "baseUrl": ".",
+    "types": ["vite/client", "bun-types"],
+    "paths": {
+      "@coda/core": ["../core/src/index.ts"],
+      "@coda/core/*": ["../core/src/*"],
+      "@coda/ui": ["../ui/src/index.ts"],
+      "@coda/ui/*": ["../ui/src/*"]
+    }
+  },
+  "include": ["src/**/*", "../core/src/**/*", "../ui/src/**/*"]
+}

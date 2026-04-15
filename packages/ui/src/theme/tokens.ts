@@ -1,0 +1,60 @@
+export const tokens = {
+  color: {
+    bg: { 0: "#0a0a0b", 1: "#121214", 2: "#1a1a1d", 3: "#24242a" },
+    border: { subtle: "#1f1f23", default: "#2a2a30", emphasis: "#3a3a44" },
+    text: {
+      primary: "#e8e8ec",
+      secondary: "#9a9aa6",
+      tertiary: "#64646e",
+      disabled: "#3a3a44",
+    },
+    accent: {
+      50: "#fff4ec",
+      400: "#ff8a4c",
+      500: "#ff6b1a",
+      600: "#e85600",
+      700: "#b84300",
+    },
+    accentGlow: "rgba(255, 107, 26, 0.15)",
+    diffAdd: "#3fb950",
+    diffRemove: "#f85149",
+    statusIdle: "#64646e",
+    statusRun: "#ff6b1a",
+    statusAwait: "#e3b341",
+    statusError: "#f85149",
+    prOpen: "#ff6b1a",
+    prMerged: "#a371f7",
+    prClosed: "#64646e",
+  },
+  font: {
+    ui: '"Inter var", -apple-system, "SF Pro Text", system-ui, sans-serif',
+    mono: '"JetBrains Mono", "SF Mono", Menlo, Consolas, monospace',
+    size: { xs: "11px", sm: "12px", base: "13px", lg: "14px", xl: "16px", "2xl": "18px" },
+    lineHeight: { tight: 1.25, normal: 1.45, relaxed: 1.6 },
+    weight: { regular: 400, medium: 500, semibold: 600 },
+  },
+  spacing: {
+    xs: "4px",
+    sm: "8px",
+    md: "12px",
+    lg: "16px",
+    xl: "24px",
+    "2xl": "32px",
+    "3xl": "48px",
+  },
+  radius: { sm: "4px", md: "6px", lg: "8px", xl: "12px", full: "9999px" },
+  shadow: {
+    panel: "0 1px 2px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.25)",
+    popover: "0 4px 16px rgba(0,0,0,0.5), 0 16px 48px rgba(0,0,0,0.35)",
+    focusRing: "0 0 0 2px rgba(255, 107, 26, 0.6)",
+  },
+  motion: {
+    fast: "120ms cubic-bezier(0.2, 0, 0.2, 1)",
+    base: "180ms cubic-bezier(0.2, 0, 0.2, 1)",
+    slow: "280ms cubic-bezier(0.2, 0, 0.2, 1)",
+    pulse: "1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+  },
+  zIndex: { base: 0, panel: 10, overlay: 50, modal: 100, toast: 500, tooltip: 1000 },
+} as const
+
+export type Tokens = typeof tokens

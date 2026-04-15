@@ -1,0 +1,7 @@
+export * as Workspace from "./workspace"
+export * as Project from "./project"
+export * as Pty from "./pty"
+export * as GitHub from "./github"
+export * as Port from "./port"
+export * as Protocol from "./protocol"
+export { ResourceRegistry } from "./resource/registry"

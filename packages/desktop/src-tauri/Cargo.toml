@@ -1,0 +1,32 @@
+[package]
+name = "coda-desktop"
+version = "2.0.0-alpha.0"
+description = "Coda agent-native IDE shell"
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "coda_desktop_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "coda-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+tokio = { version = "1", features = ["full"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = 3
+strip = true
