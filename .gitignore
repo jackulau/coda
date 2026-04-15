@@ -38,3 +38,7 @@ dist/
 build/
 target/
 *.log
+
+# Tauri generated
+packages/desktop/src-tauri/gen/
+
