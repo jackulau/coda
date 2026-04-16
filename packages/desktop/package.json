@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "test": "echo 'Rust tests via cargo' && exit 0",
+    "tauri": "bun ../app/node_modules/@tauri-apps/cli/tauri.js",
     "tauri:build": "cd src-tauri && cargo build --release",
     "tauri:test": "cd src-tauri && cargo test"
   }
