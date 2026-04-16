@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- JIT / WebKit require these two on hardened runtime. -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+
+    <!-- Disable the library-validation so spawned LSP servers (which may
+         not be signed by us) can run as child processes. -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+
+    <!-- Permit writing to user-scoped locations: ~/.coda/, workspace paths,
+         etc. Sandbox is OFF because we need full PTY + fs access. -->
+    <key>com.apple.security.get-task-allow</key>
+    <false/>
+
+    <!-- Outbound network for GitHub API + LSP server downloads -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+</dict>
+</plist>
