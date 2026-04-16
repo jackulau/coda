@@ -96,3 +96,70 @@ describe("auditSigningEnv", () => {
     expect(formatReport(r)).toContain("All platforms signed")
   })
 })
+
+describe("auditSigningEnv — keychain discovery fallback", () => {
+  test("env missing but keychain probe returns identity → macOS signed with (from keychain) note", () => {
+    const r = auditSigningEnv(
+      { CODA_APPLE_PROVIDER: "TEAM123" },
+      { keychainProbe: () => "Developer ID Application: Jack Lau (95ZR2Y4GKR)" },
+    )
+    const mac = findPlatform(r.results, "macos")
+    expect(mac.status).toBe("signed")
+    expect(mac.reason).toMatch(/from keychain/)
+  })
+
+  test("env missing AND keychain probe returns null → unsigned", () => {
+    const r = auditSigningEnv({ CODA_APPLE_PROVIDER: "TEAM123" }, { keychainProbe: () => null })
+    const mac = findPlatform(r.results, "macos")
+    expect(mac.status).toBe("unsigned")
+    expect(mac.missing).toContain("CODA_APPLE_DEV_ID")
+  })
+
+  test("env missing AND keychain probe returns empty string → unsigned", () => {
+    const r = auditSigningEnv({ CODA_APPLE_PROVIDER: "TEAM123" }, { keychainProbe: () => "  " })
+    const mac = findPlatform(r.results, "macos")
+    expect(mac.status).toBe("unsigned")
+  })
+
+  test("env > keychain preference — explicit env takes precedence over keychain", () => {
+    // Set both: env says one identity, probe returns a different one.
+    // The audit must treat it as signed even if probe throws — env wins.
+    const probeCalls: string[] = []
+    const r = auditSigningEnv(
+      {
+        CODA_APPLE_DEV_ID: "Developer ID Application: FromEnv (ENVTEAM123)",
+        CODA_APPLE_PROVIDER: "ENVTEAM123",
+      },
+      {
+        keychainProbe: () => {
+          probeCalls.push("called")
+          return "Developer ID Application: FromKeychain (KCTEAM9999)"
+        },
+      },
+    )
+    const mac = findPlatform(r.results, "macos")
+    expect(mac.status).toBe("signed")
+    // When env is set, the reason should NOT mention keychain
+    expect(mac.reason ?? "").not.toMatch(/from keychain/)
+    // And the probe should not have been called
+    expect(probeCalls).toHaveLength(0)
+  })
+
+  test("keychain fallback still requires CODA_APPLE_PROVIDER to pass fully", () => {
+    // Keychain provides dev id but provider is still missing → unsigned
+    const r = auditSigningEnv(
+      {},
+      { keychainProbe: () => "Developer ID Application: Jack Lau (95ZR2Y4GKR)" },
+    )
+    const mac = findPlatform(r.results, "macos")
+    expect(mac.missing).toContain("CODA_APPLE_PROVIDER")
+  })
+
+  test("passing no keychainProbe preserves pre-existing behavior", () => {
+    // Must match the legacy "missing env → unsigned" path exactly.
+    const legacy = auditSigningEnv({})
+    const legacyMac = findPlatform(legacy.results, "macos")
+    expect(legacyMac.status).toBe("unsigned")
+    expect(legacyMac.missing).toContain("CODA_APPLE_DEV_ID")
+  })
+})
