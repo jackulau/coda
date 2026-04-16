@@ -1,16 +1,16 @@
-# Spec and planning docs
-spec.md
-specs/
-plans/
-tasks/
-STATUS.yml
-STATUS.md
-.spec/
-.plans/
-.execution/
-lessons.md
-notes.md
-todo.md
+# Spec and planning docs (anchored to repo root — do NOT match nested dirs)
+/spec.md
+/specs/
+/plans/
+/tasks/
+/STATUS.yml
+/STATUS.md
+/.spec/
+/.plans/
+/.execution/
+/lessons.md
+/notes.md
+/todo.md
 
 # Claude Code dev files
 .claude/
