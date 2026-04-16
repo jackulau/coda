@@ -13,22 +13,40 @@ function emit(obj: Record<string, unknown>): void {
   console.log(JSON.stringify(obj))
 }
 
-function gate(state: Tasks.TasksState, phase: string): number {
+export interface GateResult {
+  code: 0 | 1 | 3
+  phase: string
+  totalTasks: number
+  pending: { id: string; status: string }[]
+}
+
+export function gatePhase(state: Tasks.TasksState, phase: string): GateResult {
   const tasks = state.listByPhase(phase)
   if (tasks.length === 0) {
+    return { code: 3, phase, totalTasks: 0, pending: [] }
+  }
+  const pending = tasks
+    .filter((t) => t.status !== "verified")
+    .map((t) => ({ id: t.id, status: t.status }))
+  return {
+    code: pending.length === 0 ? 0 : 1,
+    phase,
+    totalTasks: tasks.length,
+    pending,
+  }
+}
+
+function gate(state: Tasks.TasksState, phase: string): number {
+  const result = gatePhase(state, phase)
+  if (result.code === 3) {
     emit({ kind: "unknown-phase", phase })
     return 3
   }
-  const notVerified = tasks.filter((t) => t.status !== "verified")
-  if (notVerified.length > 0) {
-    emit({
-      kind: "phase-open",
-      phase,
-      pending: notVerified.map((t) => ({ id: t.id, status: t.status })),
-    })
+  if (result.code === 1) {
+    emit({ kind: "phase-open", phase, pending: result.pending })
     return 1
   }
-  emit({ kind: "phase-gate-passed", phase, tasks: tasks.length })
+  emit({ kind: "phase-gate-passed", phase, tasks: result.totalTasks })
   return 0
 }
 

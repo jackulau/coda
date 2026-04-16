@@ -28,7 +28,7 @@ export default defineConfig({
   test: {
     environment: "happy-dom",
     globals: true,
-    include: ["src/**/*.{test,vitest}.{ts,tsx}"],
+    include: ["src/**/*.vitest.{ts,tsx}"],
     coverage: { reporter: ["text", "lcov"] },
   },
 })

@@ -5,13 +5,13 @@ import { Tasks } from "../packages/core/src"
 
 const TASKS_PATH = process.env.CODA_TASKS_PATH ?? "tasks/coda-v2-agent-native-ide/TASKS.json"
 
-interface Snapshot {
+export interface Snapshot {
   gitStatus: string
   treeHashes: Record<string, string>
 }
 
-function snapshot(files: string[]): Snapshot {
-  const gitStatus = execSync("git status --porcelain", { encoding: "utf8" })
+export function snapshot(files: string[], gitStatus?: string): Snapshot {
+  const gs = gitStatus ?? execSync("git status --porcelain", { encoding: "utf8" })
   const treeHashes: Record<string, string> = {}
   for (const f of files) {
     try {
@@ -21,10 +21,10 @@ function snapshot(files: string[]): Snapshot {
       treeHashes[f] = "missing"
     }
   }
-  return { gitStatus, treeHashes }
+  return { gitStatus: gs, treeHashes }
 }
 
-function diff(a: Snapshot, b: Snapshot): string[] {
+export function diff(a: Snapshot, b: Snapshot): string[] {
   const diffs: string[] = []
   if (a.gitStatus !== b.gitStatus) {
     diffs.push("git status changed between runs")
