@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto"
+import { sha256Hex } from "../util/sha256"
 
 const PARTITION_PREFIX = "coda-ws-"
 
@@ -6,12 +6,7 @@ export function partitionKey(workspaceId: string, host: string): string {
   if (!workspaceId) throw new Error("workspaceId required")
   if (!host) throw new Error("host required")
   const normalized = host.toLowerCase().replace(/^\[|\]$/g, "")
-  const hash = createHash("sha256")
-    .update(workspaceId)
-    .update("|")
-    .update(normalized)
-    .digest("hex")
-    .slice(0, 16)
+  const hash = sha256Hex(`${workspaceId}|${normalized}`).slice(0, 16)
   return `${PARTITION_PREFIX}${hash}`
 }
 

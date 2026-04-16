@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto"
+import { sha256Hex } from "../util/sha256"
 
 export interface VisualSignatureInput {
   name: string
@@ -17,7 +17,7 @@ export interface VisualSignature {
 
 export function computeSignature(input: VisualSignatureInput, now = Date.now()): VisualSignature {
   const canonical = canonicalize(input)
-  const hash = createHash("sha256").update(canonical).digest("hex").slice(0, 16)
+  const hash = sha256Hex(canonical).slice(0, 16)
   const key = `${input.name}@${input.viewport.width}x${input.viewport.height}@${input.dpr}x@${input.theme}`
   return { key, name: input.name, hash, recordedAt: now }
 }

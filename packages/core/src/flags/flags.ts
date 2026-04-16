@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto"
 import { z } from "zod"
+import { sha256 } from "../util/sha256"
 
 export const FlagDefinition = z.object({
   key: z.string().min(1),
@@ -63,7 +63,11 @@ export class StaticFlagEvaluator implements FlagEvaluator {
 }
 
 function bucketFor(seed: string): number {
-  const h = createHash("sha256").update(seed).digest()
-  const n = (h.readUInt32BE(0) ?? 0) % 100
-  return n
+  const h = sha256(new TextEncoder().encode(seed))
+  const b0 = h[0] as number
+  const b1 = h[1] as number
+  const b2 = h[2] as number
+  const b3 = h[3] as number
+  const u32 = ((b0 << 24) | (b1 << 16) | (b2 << 8) | b3) >>> 0
+  return u32 % 100
 }
