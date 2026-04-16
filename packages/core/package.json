@@ -23,7 +23,10 @@
     "./shortcuts/*": "./src/shortcuts/*.ts",
     "./workspace/*": "./src/workspace/*.ts",
     "./browser/*": "./src/browser/*.ts",
-    "./port/*": "./src/port/*.ts"
+    "./port/*": "./src/port/*.ts",
+    "./perf/*": "./src/perf/*.ts",
+    "./lsp/*": "./src/lsp/*.ts",
+    "./terminal/*": "./src/terminal/*.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
