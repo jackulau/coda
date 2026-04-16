@@ -8,6 +8,12 @@ import {
   parseNotarytoolOutput,
   parseSubmissionId,
 } from "./notarize"
+import {
+  APP_SPECIFIC_PASSWORD_INSTRUCTIONS,
+  CODA_TEAM_ID,
+  formatCredentialsReport,
+  validateCredentials,
+} from "./notarize-credentials-lib"
 
 interface FakeEnv extends NotarizeEnv {
   files: Set<string>
@@ -253,5 +259,96 @@ describe("notarize — submission", () => {
     expect(args[j + 1]).toBe(REQUIRED_VARS.CODA_APPLE_TEAM_ID)
     const k = args.indexOf("--password")
     expect(args[k + 1]).toBe(REQUIRED_VARS.CODA_APPLE_APP_PASSWORD)
+  })
+})
+
+describe("notarize-credentials — validateCredentials", () => {
+  test("exit 0 when all three vars set", () => {
+    const r = validateCredentials({
+      CODA_APPLE_ID: "ci@coda.io",
+      CODA_APPLE_TEAM_ID: "95ZR2Y4GKR",
+      CODA_APPLE_APP_PASSWORD: "xxxx-xxxx-xxxx-xxxx",
+    })
+    expect(r.exitCode).toBe(0)
+    expect(r.missing).toEqual([])
+  })
+
+  test("exit 1 with every missing var enumerated", () => {
+    const r = validateCredentials({})
+    expect(r.exitCode).toBe(1)
+    expect(r.missing).toEqual(["CODA_APPLE_ID", "CODA_APPLE_TEAM_ID", "CODA_APPLE_APP_PASSWORD"])
+  })
+
+  test("exit 1 with partial", () => {
+    const r = validateCredentials({ CODA_APPLE_ID: "x" })
+    expect(r.exitCode).toBe(1)
+    expect(r.missing).toEqual(["CODA_APPLE_TEAM_ID", "CODA_APPLE_APP_PASSWORD"])
+  })
+})
+
+describe("notarize-credentials — formatCredentialsReport", () => {
+  test("when all set, report shows success + no instructions", () => {
+    const out = formatCredentialsReport({
+      exitCode: 0,
+      missing: [],
+      vars: {
+        CODA_APPLE_ID: "ci@coda.io",
+        CODA_APPLE_TEAM_ID: CODA_TEAM_ID,
+        CODA_APPLE_APP_PASSWORD: "xxxx-xxxx-xxxx-xxxx",
+      },
+    })
+    expect(out).toMatch(/All notarization credentials set/i)
+    expect(out).not.toMatch(/App-Specific Password/)
+  })
+
+  test("when missing, report includes app-specific password instructions", () => {
+    const out = formatCredentialsReport({
+      exitCode: 1,
+      missing: ["CODA_APPLE_APP_PASSWORD"],
+      vars: {},
+    })
+    expect(out).toContain(APP_SPECIFIC_PASSWORD_INSTRUCTIONS.trim().split("\n")[0])
+    expect(out).toMatch(/appleid\.apple\.com/)
+    expect(out).toMatch(/App-Specific Passwords/)
+  })
+
+  test("report prints CODA_APPLE_TEAM_ID=95ZR2Y4GKR hint", () => {
+    const out = formatCredentialsReport({
+      exitCode: 1,
+      missing: ["CODA_APPLE_TEAM_ID"],
+      vars: {},
+    })
+    expect(out).toContain("CODA_APPLE_TEAM_ID=95ZR2Y4GKR")
+  })
+
+  test("report lists every missing var by name", () => {
+    const out = formatCredentialsReport({
+      exitCode: 1,
+      missing: ["CODA_APPLE_ID", "CODA_APPLE_TEAM_ID", "CODA_APPLE_APP_PASSWORD"],
+      vars: {},
+    })
+    expect(out).toContain("CODA_APPLE_ID")
+    expect(out).toContain("CODA_APPLE_TEAM_ID")
+    expect(out).toContain("CODA_APPLE_APP_PASSWORD")
+  })
+
+  test("redacts app password when displaying set values", () => {
+    const out = formatCredentialsReport({
+      exitCode: 0,
+      missing: [],
+      vars: {
+        CODA_APPLE_ID: "ci@coda.io",
+        CODA_APPLE_TEAM_ID: CODA_TEAM_ID,
+        CODA_APPLE_APP_PASSWORD: "xxxx-xxxx-xxxx-xxxx",
+      },
+    })
+    // Exact password must never appear in output — only a masked placeholder.
+    expect(out).not.toContain("xxxx-xxxx-xxxx-xxxx")
+  })
+})
+
+describe("notarize-credentials — CODA_TEAM_ID constant", () => {
+  test("matches the user's actual Developer ID team id from the spec", () => {
+    expect(CODA_TEAM_ID).toBe("95ZR2Y4GKR")
   })
 })
