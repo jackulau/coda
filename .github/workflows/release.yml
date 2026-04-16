@@ -1,0 +1,281 @@
+name: release
+
+# Unified cross-platform release workflow.
+#
+# Fans out on v* tag push to macOS + Linux + Windows runners, builds each
+# native installer, signs where certs are present (falls back to unsigned with
+# a visible warning where they aren't), and uploads everything to the GitHub
+# release matching the tag.
+#
+# Signing availability:
+#   - macOS:   APPLE_CERT_P12_BASE64 + APPLE_CERT_P12_PASSWORD + APPLE_SIGNING_IDENTITY
+#              + APPLE_TEAM_ID + APPLE_ID + APPLE_APP_PASSWORD (full signed + notarized)
+#   - Windows: WINDOWS_PFX_BASE64 + WINDOWS_PFX_PASSWORD (optional; unsigned fallback
+#              with a "SmartScreen warning expected" message when missing)
+#   - Linux:   LINUX_GPG_KEY_BASE64 + LINUX_GPG_KEY_ID (optional; AppImage
+#              detached-signature; deb/rpm are left to repo managers)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: universal-apple-darwin
+            platform: macos
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            platform: linux
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            platform: windows
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      CODA_BUILD_TARGET: ${{ matrix.target }}
+
+    steps:
+      # --- Shared setup (all platforms) ------------------------------------
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+
+      - name: Setup Rust toolchain (macOS, universal)
+        if: matrix.platform == 'macos'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Setup Rust toolchain (Linux)
+        if: matrix.platform == 'linux'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Setup Rust toolchain (Windows)
+        if: matrix.platform == 'windows'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/desktop/src-tauri
+
+      - name: Install Linux bundler deps
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            rpm \
+            fakeroot
+
+      - name: Install bun deps
+        run: bun install --frozen-lockfile
+
+      # --- macOS: signed + notarized ---------------------------------------
+      - name: Import Apple Developer ID cert into temp keychain
+        if: matrix.platform == 'macos'
+        env:
+          APPLE_CERT_P12_BASE64: ${{ secrets.APPLE_CERT_P12_BASE64 }}
+          APPLE_CERT_P12_PASSWORD: ${{ secrets.APPLE_CERT_P12_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/build.keychain"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          CERT_FILE="$RUNNER_TEMP/apple-cert.p12"
+
+          echo "$APPLE_CERT_P12_BASE64" | base64 --decode > "$CERT_FILE"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          security import "$CERT_FILE" -k "$KEYCHAIN" \
+            -P "$APPLE_CERT_P12_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/security
+
+          security set-key-partition-list -S apple-tool:,apple: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | sed 's/"//g')
+
+          rm -f "$CERT_FILE"
+
+      - name: macOS — signed build
+        if: matrix.platform == 'macos'
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CODA_APPLE_DEV_ID: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          CODA_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CODA_MAC_ARCH: universal
+        run: |
+          set -euo pipefail
+          bash packages/desktop/src-tauri/scripts/build-mac.sh
+
+      - name: macOS — locate built .app and .dmg
+        if: matrix.platform == 'macos'
+        id: mac-locate
+        run: |
+          set -euo pipefail
+          APP_PATH="$(find packages/desktop/src-tauri/target -type d -name 'Coda.app' | head -1)"
+          DMG_PATH="$(find packages/desktop/src-tauri/target -type f -name '*.dmg' | head -1)"
+          echo "app=$APP_PATH" >> "$GITHUB_OUTPUT"
+          echo "dmg=$DMG_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: macOS — verify signature + Gatekeeper
+        if: matrix.platform == 'macos'
+        run: bash packages/desktop/src-tauri/scripts/verify-signed.sh '${{ steps.mac-locate.outputs.app }}'
+
+      - name: macOS — validate notarization creds
+        if: matrix.platform == 'macos'
+        env:
+          CODA_APPLE_ID: ${{ secrets.APPLE_ID }}
+          CODA_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CODA_APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: bash packages/desktop/src-tauri/scripts/notarize-credentials.sh
+
+      - name: macOS — notarize DMG
+        if: matrix.platform == 'macos'
+        env:
+          CODA_APPLE_ID: ${{ secrets.APPLE_ID }}
+          CODA_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CODA_APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: bun packages/desktop/src-tauri/scripts/notarize.ts --bundle '${{ steps.mac-locate.outputs.dmg }}'
+
+      - name: macOS — smoke-verify universal Mach-O (x64 + arm64)
+        if: matrix.platform == 'macos'
+        run: |
+          set -euo pipefail
+          BIN="${{ steps.mac-locate.outputs.app }}/Contents/MacOS/Coda"
+          if ! file "$BIN" | grep -q 'Mach-O universal'; then
+            echo "binary is not universal: $(file "$BIN")" >&2
+            exit 1
+          fi
+          lipo -archs "$BIN" | tr ' ' '\n' | sort -u | tee /tmp/archs.txt
+          grep -qx 'x86_64' /tmp/archs.txt
+          grep -qx 'arm64' /tmp/archs.txt
+
+      # --- Windows: signed if PFX present, else unsigned + warning ---------
+      - name: Windows — decode PFX (if provided)
+        if: matrix.platform == 'windows' && env.WINDOWS_PFX_BASE64 != ''
+        shell: pwsh
+        env:
+          WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
+        run: |
+          $pfxPath = Join-Path $env:RUNNER_TEMP "coda-signing.pfx"
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64))
+          echo "WINDOWS_PFX_PATH=$pfxPath" >> $env:GITHUB_ENV
+
+      - name: Windows — unsigned build warning
+        if: matrix.platform == 'windows' && env.WINDOWS_PFX_BASE64 == ''
+        shell: pwsh
+        env:
+          WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
+        run: |
+          Write-Warning "WINDOWS_PFX_BASE64 not set — producing an unsigned build. Users will see a SmartScreen warning on first launch."
+
+      - name: Windows — build (signed or unsigned, script decides)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        env:
+          WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
+        run: |
+          pwsh -File packages/desktop/src-tauri/scripts/build-windows.ps1
+
+      - name: Windows — locate built installers
+        if: matrix.platform == 'windows'
+        id: win-locate
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem -Path packages/desktop/src-tauri/target -Recurse -Filter "*.msi" | Select-Object -First 1
+          $exe = Get-ChildItem -Path packages/desktop/src-tauri/target -Recurse -Filter "*-setup.exe" | Select-Object -First 1
+          $status = Get-ChildItem -Path packages/desktop/src-tauri/target -Recurse -Filter "*SIGNED.txt" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($msi) { echo "msi=$($msi.FullName)" >> $env:GITHUB_OUTPUT }
+          if ($exe) { echo "exe=$($exe.FullName)" >> $env:GITHUB_OUTPUT }
+          if ($status) { echo "status=$($status.FullName)" >> $env:GITHUB_OUTPUT }
+
+      # --- Linux: deb + rpm + AppImage, GPG-signed AppImage if key present -
+      - name: Linux — decode GPG key (if provided)
+        if: matrix.platform == 'linux' && env.LINUX_GPG_KEY_BASE64 != ''
+        env:
+          LINUX_GPG_KEY_BASE64: ${{ secrets.LINUX_GPG_KEY_BASE64 }}
+          LINUX_GPG_KEY_ID: ${{ secrets.LINUX_GPG_KEY_ID }}
+        run: |
+          set -euo pipefail
+          echo "$LINUX_GPG_KEY_BASE64" | base64 --decode | gpg --batch --import
+          echo "LINUX_GPG_KEY_ID=$LINUX_GPG_KEY_ID" >> "$GITHUB_ENV"
+
+      - name: Linux — unsigned build warning
+        if: matrix.platform == 'linux' && env.LINUX_GPG_KEY_BASE64 == ''
+        env:
+          LINUX_GPG_KEY_BASE64: ${{ secrets.LINUX_GPG_KEY_BASE64 }}
+        run: |
+          echo "::warning::LINUX_GPG_KEY_BASE64 not set — AppImage will ship unsigned. Users won't be able to verify the detached signature."
+
+      - name: Linux — build deb + rpm + AppImage
+        if: matrix.platform == 'linux'
+        run: bash packages/desktop/src-tauri/scripts/build-linux.sh
+
+      - name: Linux — locate built artifacts
+        if: matrix.platform == 'linux'
+        id: linux-locate
+        run: |
+          set -euo pipefail
+          DEB="$(find packages/desktop/src-tauri/target -type f -name '*.deb' | head -1)"
+          RPM="$(find packages/desktop/src-tauri/target -type f -name '*.rpm' | head -1)"
+          APPIMAGE="$(find packages/desktop/src-tauri/target -type f -name '*.AppImage' | head -1)"
+          SIG="$(find packages/desktop/src-tauri/target -type f -name '*.AppImage.asc' | head -1 || true)"
+          echo "deb=$DEB" >> "$GITHUB_OUTPUT"
+          echo "rpm=$RPM" >> "$GITHUB_OUTPUT"
+          echo "appimage=$APPIMAGE" >> "$GITHUB_OUTPUT"
+          echo "sig=$SIG" >> "$GITHUB_OUTPUT"
+
+      # --- Upload per-platform artifacts to the release --------------------
+      - name: Upload macOS artifacts
+        if: matrix.platform == 'macos'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.mac-locate.outputs.dmg }}
+          fail_on_unmatched_files: true
+
+      - name: Upload Windows artifacts
+        if: matrix.platform == 'windows'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.win-locate.outputs.msi }}
+            ${{ steps.win-locate.outputs.exe }}
+          fail_on_unmatched_files: false
+
+      - name: Upload Linux artifacts
+        if: matrix.platform == 'linux'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.linux-locate.outputs.deb }}
+            ${{ steps.linux-locate.outputs.rpm }}
+            ${{ steps.linux-locate.outputs.appimage }}
+            ${{ steps.linux-locate.outputs.sig }}
+          fail_on_unmatched_files: false
