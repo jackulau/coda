@@ -42,3 +42,4 @@ target/
 # Tauri generated
 packages/desktop/src-tauri/gen/
 
+/packages/app/test-results/

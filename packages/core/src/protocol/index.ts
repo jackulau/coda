@@ -1,5 +1,5 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto"
 import { z } from "zod"
+import { hmacSha256Hex, randomHex, timingSafeEqualHex } from "../util/sha256"
 
 export const RpcRequest = z.object({
   id: z.string().uuid(),
@@ -29,22 +29,14 @@ export const RPC_FETCH_TIMEOUT_MS = 5000
 export const IDEMPOTENCY_TTL_MS = 60_000
 
 export function generateSessionToken(): string {
-  return randomBytes(32).toString("hex")
+  return randomHex(32)
 }
 
 export function signRequest(token: string, body: string): string {
-  return createHmac("sha256", token).update(body).digest("hex")
+  return hmacSha256Hex(token, body)
 }
 
 export function verifySignature(token: string, body: string, signature: string): boolean {
   const expected = signRequest(token, body)
-  if (expected.length !== signature.length) return false
-  try {
-    const a = new Uint8Array(Buffer.from(expected, "hex"))
-    const b = new Uint8Array(Buffer.from(signature, "hex"))
-    if (a.length !== b.length) return false
-    return timingSafeEqual(a, b)
-  } catch {
-    return false
-  }
+  return timingSafeEqualHex(expected, signature)
 }

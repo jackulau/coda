@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev": "node scripts/run-vite.mjs",
+    "build": "node scripts/run-vite.mjs build",
+    "preview": "node scripts/run-vite.mjs preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "bun test src && bun run test:vitest",
     "test:bun:unit": "bun test src",
@@ -21,6 +21,7 @@
     "solid-js": "^1.9.3"
   },
   "devDependencies": {
+    "@esbuild/darwin-x64": "0.21.5",
     "@playwright/test": "^1.57.0",
     "@solidjs/testing-library": "^0.8.10",
     "@tauri-apps/cli": "^2.1.0",
