@@ -63,10 +63,14 @@ export interface CanvasLike {
   getContext(type: "2d"): Context2DLike | null
 }
 
+// Local alias so the core package (lib: ES2023, no DOM) doesn't need browser
+// type globals to describe the renderer interface.
+export type TextBaseline = "top" | "hanging" | "middle" | "alphabetic" | "ideographic" | "bottom"
+
 export interface Context2DLike {
   fillStyle: string
   font: string
-  textBaseline: CanvasTextBaseline
+  textBaseline: TextBaseline
   fillRect(x: number, y: number, w: number, h: number): void
   clearRect(x: number, y: number, w: number, h: number): void
   fillText(text: string, x: number, y: number): void
@@ -97,7 +101,9 @@ export interface OffscreenCapableRendererOptions {
 
 // ---- capability detection ---------------------------------------------------
 
-export function detectCapabilities(globalObj: typeof globalThis = globalThis): PlatformCapabilities {
+export function detectCapabilities(
+  globalObj: typeof globalThis = globalThis,
+): PlatformCapabilities {
   const g = globalObj as unknown as {
     OffscreenCanvas?: unknown
     Worker?: unknown
@@ -294,15 +300,19 @@ export class OffscreenCapableRenderer implements Renderer {
 }
 
 function defaultEnv(): RendererEnv {
+  const g = globalThis as unknown as {
+    requestAnimationFrame?: (cb: () => void) => unknown
+    cancelAnimationFrame?: (id: unknown) => void
+  }
   const caps = detectCapabilities()
-  const raf =
-    typeof globalThis.requestAnimationFrame === "function"
-      ? globalThis.requestAnimationFrame.bind(globalThis)
-      : (cb: () => void) => setTimeout(cb, 16)
-  const caf =
-    typeof globalThis.cancelAnimationFrame === "function"
-      ? globalThis.cancelAnimationFrame.bind(globalThis)
-      : (id: unknown) => clearTimeout(id as ReturnType<typeof setTimeout>)
+  const raf: (cb: () => void) => unknown =
+    typeof g.requestAnimationFrame === "function"
+      ? g.requestAnimationFrame.bind(g)
+      : (cb: () => void) => setTimeout(cb, 16) as unknown
+  const caf: (id: unknown) => void =
+    typeof g.cancelAnimationFrame === "function"
+      ? g.cancelAnimationFrame.bind(g)
+      : (id: unknown) => clearTimeout(id as Parameters<typeof clearTimeout>[0])
   return {
     capabilities: caps,
     requestAnimationFrame: raf,

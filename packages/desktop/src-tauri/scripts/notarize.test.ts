@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test"
 
 import {
-  missingVars,
-  NotarizeError,
   type NotarizeEnv,
+  NotarizeError,
+  missingVars,
   notarize,
   parseNotarytoolOutput,
   parseSubmissionId,
@@ -15,10 +15,12 @@ interface FakeEnv extends NotarizeEnv {
   responses: Array<{ exitCode: number; stdout: string; stderr: string }>
 }
 
-function makeEnv(opts: {
-  files?: string[]
-  responses?: FakeEnv["responses"]
-} = {}): FakeEnv {
+function makeEnv(
+  opts: {
+    files?: string[]
+    responses?: FakeEnv["responses"]
+  } = {},
+): FakeEnv {
   const env: FakeEnv = {
     files: new Set(opts.files ?? []),
     runs: [],
@@ -75,7 +77,7 @@ describe("parseNotarytoolOutput", () => {
   })
 
   test("handles plain-text Accepted", () => {
-    const txt = `id: 1234abcd-5678-dead\nstatus: Accepted\n`
+    const txt = "id: 1234abcd-5678-dead\nstatus: Accepted\n"
     expect(parseNotarytoolOutput(txt).status).toBe("Accepted")
   })
 
@@ -99,11 +101,7 @@ describe("notarize — dry run", () => {
     })
     expect(r.kind).toBe("dry-run")
     if (r.kind === "dry-run") {
-      expect(r.missing).toEqual([
-        "CODA_APPLE_ID",
-        "CODA_APPLE_TEAM_ID",
-        "CODA_APPLE_APP_PASSWORD",
-      ])
+      expect(r.missing).toEqual(["CODA_APPLE_ID", "CODA_APPLE_TEAM_ID", "CODA_APPLE_APP_PASSWORD"])
       expect(r.bundleExists).toBe(false)
     }
     expect(env.runs).toHaveLength(0)
@@ -141,7 +139,7 @@ describe("notarize — submission", () => {
       vars: REQUIRED_VARS,
       env,
     })
-    if (r.kind !== "submitted") throw new Error("expected submitted, got " + r.kind)
+    if (r.kind !== "submitted") throw new Error(`expected submitted, got ${r.kind}`)
     expect(r.status).toBe("Accepted")
     expect(r.submissionId).toBe("abcd1234-submitid")
     expect(r.stapled).toBe(true)

@@ -4,8 +4,8 @@
 // the context provider, and measures the re-render time via the browser's
 // Performance API. Asserts p95 ≤ 50ms warm (×PERF_SCALE_FACTOR).
 
-import { expect, test } from "@playwright/test"
 import { assertBudget } from "@coda/core/perf/assert-budget"
+import { expect, test } from "@playwright/test"
 
 test("@perf worktree switch re-renders under 50ms p95 warm", async ({ page }) => {
   await page.goto("/")
@@ -16,9 +16,7 @@ test("@perf worktree switch re-renders under 50ms p95 warm", async ({ page }) =>
   // toggling the sidebar open/close state repeatedly — which triggers the
   // same SolidJS reconciliation path as a worktree switch.
   const samples: number[] = await page.evaluate(async () => {
-    const targets = Array.from(
-      document.querySelectorAll<HTMLElement>('[data-testid="sidebar"]'),
-    )
+    const targets = Array.from(document.querySelectorAll<HTMLElement>('[data-testid="sidebar"]'))
     if (targets.length === 0) return []
     const target = targets[0]
     const measurements: number[] = []

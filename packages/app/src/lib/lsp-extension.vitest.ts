@@ -9,8 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   type CompletionItem,
-  type Diagnostic,
   type DefinitionLocation,
+  type Diagnostic,
   type EditorHandle,
   type EditorPosition,
   type HoverInfo,
@@ -217,7 +217,12 @@ describe("createLspExtension", () => {
     expect(h).toBeTruthy()
     h?.({
       uri: editor.uri,
-      diagnostics: [{ range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } }, message: "x" }],
+      diagnostics: [
+        {
+          range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+          message: "x",
+        },
+      ],
     })
     expect(editor.diagnostics).toHaveLength(1)
     expect(editor.diagnostics[0]?.[0]?.message).toBe("x")
@@ -229,7 +234,12 @@ describe("createLspExtension", () => {
     const h = client.notificationHandlers.get("textDocument/publishDiagnostics")
     h?.({
       uri: "file:///other.ts",
-      diagnostics: [{ range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } }, message: "x" }],
+      diagnostics: [
+        {
+          range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+          message: "x",
+        },
+      ],
     })
     expect(editor.diagnostics).toHaveLength(0)
   })
@@ -310,9 +320,9 @@ describe("createLspExtension", () => {
     expect(ext.hasPendingChange()).toBe(false)
     vi.advanceTimersByTime(500)
     // No didChange should fire after detach
-    expect(
-      client.notifications.filter((n) => n.method === "textDocument/didChange"),
-    ).toHaveLength(0)
+    expect(client.notifications.filter((n) => n.method === "textDocument/didChange")).toHaveLength(
+      0,
+    )
   })
 
   it("offline mode: when client.state is stopped, no messages are sent", () => {

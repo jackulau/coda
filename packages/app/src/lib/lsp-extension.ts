@@ -295,7 +295,7 @@ export function normalizeHover(raw: unknown): HoverInfo | null {
   if (typeof c === "string") contents = c
   else if (Array.isArray(c)) {
     contents = c
-      .map((m) => (typeof m === "string" ? m : (m as { value?: string }).value ?? ""))
+      .map((m) => (typeof m === "string" ? m : ((m as { value?: string }).value ?? "")))
       .filter(Boolean)
       .join("\n\n")
   } else if (c && typeof c === "object") {

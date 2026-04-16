@@ -11,7 +11,7 @@
 // The public entry point is `installServer(id, opts)`. Callers normally only
 // override the defaults for testing.
 
-import { allServers, type LspRegistryEntry } from "./registry"
+import { type LspRegistryEntry, allServers } from "./registry"
 
 export type InstallPhase =
   | "resolving"
@@ -379,11 +379,11 @@ function defaultEnv(): InstallEnv {
 function req<T>(name: string): T {
   // Indirect require so bundlers don't attempt to resolve node builtins in the
   // browser bundle. Callers that pass `opts.env` never hit this.
-  const r = (
-    globalThis as unknown as { require?: (m: string) => unknown }
-  ).require ?? (() => {
-    throw new Error(`node module ${name} not available in this runtime`)
-  })
+  const r =
+    (globalThis as unknown as { require?: (m: string) => unknown }).require ??
+    (() => {
+      throw new Error(`node module ${name} not available in this runtime`)
+    })
   return r(name) as T
 }
 

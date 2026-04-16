@@ -5,8 +5,8 @@
 // ≥120fps on M-series and ≥60fps on non-HiDPI/older hardware — detected via
 // `navigator.hardwareConcurrency`. PERF_SCALE_FACTOR loosens the floor on CI.
 
-import { expect, test } from "@playwright/test"
 import { assertFpsFloor } from "@coda/core/perf/assert-budget"
+import { expect, test } from "@playwright/test"
 
 test("@perf terminal scroll meets fps floor", async ({ page }) => {
   await page.goto("/")

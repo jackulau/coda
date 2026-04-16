@@ -4,8 +4,8 @@
 // Budget: ≤ 1500ms locally, ≤ 3000ms when CI=1.
 // PERF_SCALE_FACTOR multiplies the budget further.
 
-import { expect, test } from "@playwright/test"
 import { assertBudget } from "@coda/core/perf/assert-budget"
+import { expect, test } from "@playwright/test"
 
 const CI = process.env.CI === "1" || process.env.CI === "true"
 const BASE_BUDGET_MS = CI ? 3000 : 1500

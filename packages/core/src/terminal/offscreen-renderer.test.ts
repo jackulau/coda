@@ -21,7 +21,7 @@ function makeCtx(): Context2DLike & {
   const ctx = {
     fillStyle: "",
     font: "",
-    textBaseline: "top" as CanvasTextBaseline,
+    textBaseline: "top" as const,
     calls: [] as Array<{ op: string; args: unknown[] }>,
     fillRect(x: number, y: number, w: number, h: number) {
       this.calls.push({ op: "fillRect", args: [x, y, w, h] })
@@ -139,9 +139,9 @@ describe("detectCapabilities", () => {
 
   test("reports true when globals present", () => {
     const fakeGlobal = {
-      OffscreenCanvas: function () {},
-      Worker: function () {},
-      HTMLCanvasElement: { prototype: { transferControlToOffscreen: function () {} } },
+      OffscreenCanvas: () => {},
+      Worker: () => {},
+      HTMLCanvasElement: { prototype: { transferControlToOffscreen: () => {} } },
     } as unknown as typeof globalThis
     const caps = detectCapabilities(fakeGlobal)
     expect(caps.hasOffscreenCanvas).toBe(true)

@@ -6,12 +6,12 @@
 import { describe, expect, test } from "bun:test"
 
 import {
+  type InstallEnv,
+  InstallError,
+  type InstallOptions,
   buildPackageManagerCommand,
   chooseStrategy,
   defaultInstallRoot,
-  InstallError,
-  type InstallEnv,
-  type InstallOptions,
   installServer,
   uninstall,
 } from "./installer"
@@ -27,15 +27,20 @@ interface FakeEnv extends InstallEnv {
   commands: Array<{ command: string; args: string[]; extraEnv?: Record<string, string> }>
   tempCounter: number
   downloadImpl: (url: string) => Uint8Array
-  runCommandImpl: (command: string, args: string[]) => { exitCode: number; stdout: string; stderr: string }
+  runCommandImpl: (
+    command: string,
+    args: string[],
+  ) => { exitCode: number; stdout: string; stderr: string }
 }
 
-function makeEnv(opts: {
-  home?: string
-  existingDirs?: string[]
-  downloadImpl?: FakeEnv["downloadImpl"]
-  runCommandImpl?: FakeEnv["runCommandImpl"]
-} = {}): FakeEnv {
+function makeEnv(
+  opts: {
+    home?: string
+    existingDirs?: string[]
+    downloadImpl?: FakeEnv["downloadImpl"]
+    runCommandImpl?: FakeEnv["runCommandImpl"]
+  } = {},
+): FakeEnv {
   const env: FakeEnv = {
     home: opts.home ?? "/home/test",
     fsFiles: new Map(),
@@ -240,11 +245,9 @@ describe("installServer — download strategy", () => {
     const env = makeEnv()
     env.downloadImpl = () => new Uint8Array(0)
     await expect(
-      installServer(
-        "rust",
-        { env, platform: "linux-x64", installRoot: "/r" },
-        [{ ...RUST_ENTRY, releaseChecksum: "" }],
-      ),
+      installServer("rust", { env, platform: "linux-x64", installRoot: "/r" }, [
+        { ...RUST_ENTRY, releaseChecksum: "" },
+      ]),
     ).rejects.toThrow(/empty download/)
   })
 
@@ -252,11 +255,9 @@ describe("installServer — download strategy", () => {
     const env = makeEnv()
     // Entry has releaseUrls for linux/darwin but not win32; we also have a
     // cargo-flavored installHint so the installer falls back to cargo.
-    const result = await installServer(
-      "rust",
-      { env, platform: "win32-x64", installRoot: "/r" },
-      [{ ...RUST_ENTRY, releaseChecksum: "" }],
-    )
+    const result = await installServer("rust", { env, platform: "win32-x64", installRoot: "/r" }, [
+      { ...RUST_ENTRY, releaseChecksum: "" },
+    ])
     expect(result.strategy).toBe("cargo")
   })
 
@@ -271,11 +272,7 @@ describe("installServer — download strategy", () => {
       releaseChecksum: "",
     }
     await expect(
-      installServer(
-        "rust",
-        { env, platform: "win32-x64", installRoot: "/r" },
-        [entryLinuxOnly],
-      ),
+      installServer("rust", { env, platform: "win32-x64", installRoot: "/r" }, [entryLinuxOnly]),
     ).rejects.toThrow(/no install strategy/)
   })
 
@@ -346,11 +343,9 @@ describe("installServer — package manager strategies", () => {
   test("cargo strategy runs cargo install with CARGO_INSTALL_ROOT", async () => {
     const env = makeEnv()
     const entry = { ...RUST_ENTRY, releaseUrls: undefined }
-    const result = await installServer(
-      "rust",
-      { env, platform: "linux-x64", installRoot: "/r" },
-      [entry],
-    )
+    const result = await installServer("rust", { env, platform: "linux-x64", installRoot: "/r" }, [
+      entry,
+    ])
     expect(result.strategy).toBe("cargo")
     expect(env.commands[0]).toEqual({
       command: "cargo",
@@ -376,9 +371,9 @@ describe("installServer — validation", () => {
 
   test("no strategy available throws 'no-strategy'", async () => {
     const env = makeEnv()
-    await expect(
-      installServer("go", { env, installRoot: "/r" }, [GO_ENTRY]),
-    ).rejects.toThrow(/no install strategy/)
+    await expect(installServer("go", { env, installRoot: "/r" }, [GO_ENTRY])).rejects.toThrow(
+      /no install strategy/,
+    )
   })
 })
 

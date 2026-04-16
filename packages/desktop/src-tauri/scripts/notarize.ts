@@ -29,10 +29,7 @@ export interface NotarizeOptions {
 
 export interface NotarizeEnv {
   fileExists(path: string): boolean
-  runCommand(
-    command: string,
-    args: string[],
-  ): { exitCode: number; stdout: string; stderr: string }
+  runCommand(command: string, args: string[]): { exitCode: number; stdout: string; stderr: string }
 }
 
 export type NotarizeOutcome =
@@ -69,16 +66,10 @@ export function notarize(opts: NotarizeOptions): NotarizeOutcome {
   }
 
   if (missing.length > 0) {
-    throw new NotarizeError(
-      `missing env vars: ${missing.join(", ")}`,
-      "missing-env",
-    )
+    throw new NotarizeError(`missing env vars: ${missing.join(", ")}`, "missing-env")
   }
   if (!bundleExists) {
-    throw new NotarizeError(
-      `bundle not found: ${opts.bundlePath}`,
-      "missing-bundle",
-    )
+    throw new NotarizeError(`bundle not found: ${opts.bundlePath}`, "missing-bundle")
   }
 
   const submission = env.runCommand(xcrun, [
@@ -132,9 +123,7 @@ export function notarize(opts: NotarizeOptions): NotarizeOutcome {
 }
 
 /** Parse `xcrun notarytool submit --output-format json` output. */
-export function parseNotarytoolOutput(
-  out: string,
-): { id: string | null; status: NotarizeStatus } {
+export function parseNotarytoolOutput(out: string): { id: string | null; status: NotarizeStatus } {
   const trimmed = out.trim()
   if (trimmed.startsWith("{")) {
     try {
@@ -210,7 +199,7 @@ if ((import.meta as unknown as { main?: boolean }).main) {
   const bundlePath =
     bundleIdx >= 0
       ? argv[bundleIdx + 1]
-      : argv.filter((a) => !a.startsWith("--"))[0] ?? "target/release/bundle/macos/Coda.app.zip"
+      : (argv.filter((a) => !a.startsWith("--"))[0] ?? "target/release/bundle/macos/Coda.app.zip")
 
   try {
     const result = notarize({
