@@ -1,5 +1,6 @@
 import { type Component, ErrorBoundary, createSignal, onCleanup, onMount } from "solid-js"
 import { CommandPalette, type PaletteCommand } from "./components/command-palette"
+import { CrashBanner } from "./components/crash-banner"
 import { LayoutProvider } from "./context/layout"
 import { WorkspaceProvider, useWorkspaces } from "./context/workspace"
 import { CenterPanel } from "./pages/layout/center-panel"
@@ -73,6 +74,7 @@ const Shell: Component = () => {
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
       />
+      <CrashBanner />
     </ErrorBoundary>
   )
 }

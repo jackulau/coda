@@ -1,0 +1,266 @@
+#!/usr/bin/env bun
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { Tasks } from "../packages/core/src"
+
+const TASKS_PATH = process.env.CODA_TASKS_PATH ?? "tasks/coda-v2-agent-native-ide/TASKS.json"
+const STOP_FILE = process.env.CODA_STOP_FILE ?? `${process.env.HOME}/.coda/stophook.stop`
+const MAX_ATTEMPTS = Number.parseInt(process.env.CODA_MAX_ATTEMPTS ?? "5", 10)
+
+type Mode = "plan" | "verify" | "status" | "seed"
+
+interface ParsedArgs {
+  mode: Mode
+  taskId?: string
+  command?: string
+  tasksPath: string
+}
+
+function parseArgs(argv: string[]): ParsedArgs {
+  const args = argv.slice(2)
+  const out: ParsedArgs = { mode: "plan", tasksPath: TASKS_PATH }
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]
+    if (a === "--plan") {
+      out.mode = "plan"
+      const next = args[i + 1]
+      if (next && !next.startsWith("--")) {
+        out.taskId = next
+        i++
+      }
+    } else if (a === "--verify") {
+      out.mode = "verify"
+      const next = args[i + 1]
+      if (next && !next.startsWith("--")) {
+        out.taskId = next
+        i++
+      }
+    } else if (a === "--status") {
+      out.mode = "status"
+    } else if (a === "--seed") {
+      out.mode = "seed"
+    } else if (a === "--tasks") {
+      const next = args[i + 1]
+      if (next) {
+        out.tasksPath = next
+        i++
+      }
+    }
+  }
+  return out
+}
+
+function stopFilePresent(): boolean {
+  try {
+    return existsSync(STOP_FILE)
+  } catch {
+    return false
+  }
+}
+
+function loadState(path: string): Tasks.TasksState {
+  if (!existsSync(path)) {
+    const seeded = new Tasks.TasksState()
+    writeAtomic(path, seeded.serialize())
+    return seeded
+  }
+  const json = readFileSync(path, "utf8")
+  return Tasks.TasksState.deserialize(json)
+}
+
+function writeAtomic(path: string, content: string): void {
+  mkdirSync(dirname(path), { recursive: true })
+  const tmp = `${path}.${process.pid}.tmp`
+  writeFileSync(tmp, content)
+  renameSync(tmp, path)
+}
+
+function saveState(state: Tasks.TasksState, path: string): void {
+  writeAtomic(path, state.serialize())
+}
+
+function emit(event: Record<string, unknown>): void {
+  console.log(JSON.stringify({ ts: Date.now(), ...event }))
+}
+
+function cmdStatus(state: Tasks.TasksState): void {
+  const byStatus = new Map<string, number>()
+  for (const t of state.list()) {
+    byStatus.set(t.status, (byStatus.get(t.status) ?? 0) + 1)
+  }
+  emit({ kind: "status", byStatus: Object.fromEntries(byStatus), total: state.list().length })
+}
+
+function cmdPlan(state: Tasks.TasksState, path: string, explicit?: string): number {
+  if (stopFilePresent()) {
+    emit({ kind: "halt", reason: "stop-file-present", path: STOP_FILE })
+    return 0
+  }
+  const errors = state.validate()
+  if (errors.length > 0) {
+    emit({ kind: "validation-error", errors })
+    return 1
+  }
+  const task = explicit ? state.get(explicit) : state.next(Date.now())
+  if (!task) {
+    emit({ kind: "no-work" })
+    return 0
+  }
+  if (task.status === "blocked") {
+    emit({ kind: "blocked", taskId: task.id, reason: task.lastError ?? "blocked" })
+    return 0
+  }
+  state.markInProgress(task.id, Date.now())
+  saveState(state, path)
+  emit({
+    kind: "plan",
+    taskId: task.id,
+    phase: task.phase,
+    title: task.title,
+    files: task.files,
+    verification: task.verificationCommand,
+    attempt: task.attempts,
+  })
+  return 0
+}
+
+function hashInputs(task: Tasks.TaskEntry): string {
+  const data = [task.id, task.verificationCommand, ...task.files.sort()].join("\n")
+  return Bun.hash(data).toString(16)
+}
+
+async function cmdVerify(state: Tasks.TasksState, path: string, taskId: string): Promise<number> {
+  const task = state.get(taskId)
+  if (!task) {
+    emit({ kind: "unknown-task", taskId })
+    return 1
+  }
+  const proc = Bun.spawn(["bash", "-c", task.verificationCommand], {
+    stderr: "pipe",
+    stdout: "pipe",
+  })
+  const exit = await proc.exited
+  const stdout = await new Response(proc.stdout).text()
+  const stderr = await new Response(proc.stderr).text()
+  if (exit === 0) {
+    state.markVerified(taskId, hashInputs(task), Date.now())
+    saveState(state, path)
+    emit({ kind: "verified", taskId, stdout: truncate(stdout), stderr: truncate(stderr) })
+    return 0
+  }
+  if (task.attempts >= MAX_ATTEMPTS) {
+    state.markBlocked(taskId, `exceeded ${MAX_ATTEMPTS} attempts: ${truncate(stderr)}`)
+    saveState(state, path)
+    emit({ kind: "blocked", taskId, attempts: task.attempts })
+    return 0
+  }
+  state.markFailed(taskId, truncate(stderr))
+  saveState(state, path)
+  emit({
+    kind: "failed",
+    taskId,
+    exit,
+    attempts: task.attempts,
+    stdout: truncate(stdout),
+    stderr: truncate(stderr),
+  })
+  return 0
+}
+
+function truncate(s: string, max = 4000): string {
+  return s.length <= max ? s : `${s.slice(0, max)}... [${s.length - max} bytes truncated]`
+}
+
+async function cmdSeed(path: string): Promise<number> {
+  const state = new Tasks.TasksState()
+  for (const t of seedEntries()) state.upsert(t)
+  const errors = state.validate()
+  if (errors.length > 0) {
+    emit({ kind: "seed-validation-failed", errors })
+    return 1
+  }
+  saveState(state, path)
+  emit({ kind: "seeded", count: state.list().length, path })
+  return 0
+}
+
+function seedEntries(): Tasks.TaskEntry[] {
+  const mk = (
+    id: string,
+    phase: string,
+    title: string,
+    verification: string,
+    deps: string[] = [],
+  ): Tasks.TaskEntry => ({
+    id,
+    phase,
+    title,
+    status: "pending",
+    dependencies: deps,
+    startedAt: null,
+    completedAt: null,
+    attempts: 0,
+    lastError: null,
+    verificationCommand: verification,
+    verificationLastPassedAt: null,
+    idempotentHash: null,
+    files: [],
+  })
+  const core = "bun test packages/core/src"
+  return [
+    mk(
+      "A1",
+      "A",
+      "Workspace+Project stores + event bus",
+      `${core}/workspace ${core}/project ${core}/event`,
+    ),
+    mk("A2", "A", "PtySession CRUD + cascade", `${core}/pty`, ["A1"]),
+    mk("A3", "A", "GitHub PR client + auth + errors", `${core}/github`, ["A1"]),
+    mk("A4", "A", "HMAC RPC middleware + timeout", `${core}/protocol`, ["A1"]),
+    mk("B1", "B", "Sidebar grouping helpers", `${core}/workspace/sidebar-helpers.test.ts`, ["A1"]),
+    mk("B2", "B", "Drag-reorder + pin", `${core}/workspace/reorder.test.ts`, ["B1"]),
+    mk("E1", "E", "Unified diff parser", `${core}/diff`, ["A3"]),
+    mk("F", "F", "Browser partition + nav guard", `${core}/browser`, ["A4"]),
+    mk("H1", "H", "Port parsers + attribution", `${core}/port`, ["A1"]),
+    mk("J1", "J", "Watchdog circuit", `${core}/watchdog`, ["A4"]),
+    mk("J2", "J", "Layout snapshot v1→v2", `${core}/storage`, ["A1"]),
+    mk("J3", "J", "Perf budgets + p95/p99", `${core}/perf/budget.test.ts`, ["J1"]),
+    mk("J4", "J", "Resource quotas ladder", `${core}/perf/quotas.test.ts`, ["J1"]),
+    mk("J7", "J", "Lock graph + deadlock detection", `${core}/locks`, ["A1"]),
+    mk("U2", "U", "Command palette fuzzy scorer", `${core}/palette`, ["A1"]),
+    mk("U3", "U", "Shortcut registry", `${core}/shortcuts`, ["A1"]),
+    mk("X2", "X", "Update channel selector", `${core}/update`, []),
+    mk("Y1", "Y", "Log writer + redaction", `${core}/log`, []),
+    mk("Y4", "Y", "Feature flags + kill switch", `${core}/flags`, []),
+    mk("0.1", "0", "TASKS.json state machine", `${core}/tasks`, []),
+  ]
+}
+
+async function main(): Promise<number> {
+  const args = parseArgs(process.argv)
+  const path = join(process.cwd(), args.tasksPath)
+
+  if (args.mode === "seed") return cmdSeed(path)
+
+  const state = loadState(path)
+  if (args.mode === "status") {
+    cmdStatus(state)
+    return 0
+  }
+  if (args.mode === "plan") return cmdPlan(state, path, args.taskId)
+  if (args.mode === "verify") {
+    if (!args.taskId) {
+      emit({ kind: "error", reason: "--verify requires a task id" })
+      return 1
+    }
+    return cmdVerify(state, path, args.taskId)
+  }
+  emit({ kind: "error", reason: "unknown mode" })
+  return 1
+}
+
+if (import.meta.main) {
+  main().then((code) => {
+    process.exit(code)
+  })
+}
