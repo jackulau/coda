@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { dirname, resolve } from "node:path"
 import { Tasks } from "../packages/core/src"
 
 const TASKS_PATH = process.env.CODA_TASKS_PATH ?? "tasks/coda-v2-agent-native-ide/TASKS.json"
@@ -274,12 +274,67 @@ function seedEntries(): Tasks.TaskEntry[] {
       `${core}/project/actions.test.ts`,
       ["A1"],
     ),
+    mk("C2", "C", "PTY reattach across sidecar restart", `${core}/pty-reattach`, ["A2"]),
+    mk("C4", "C", "Terminal tabs mounted across worktree switch", `${core}/terminal-switch`, [
+      "C1",
+    ]),
+    mk("C5", "C", "Terminal settings live-apply + defaults", `${core}/terminal-settings`, ["C1"]),
+    mk("J6", "J", "Timeout budgets + withTimeout helper", `${core}/util/timeout`, []),
+    mk("T1", "T", "Foundation biome/package.json audit", `${core}/foundation`, []),
+    mk("T2", "T", "Browser panel history + nav stack", `${core}/browser-panel`, []),
+    mk(
+      "T3",
+      "T",
+      "Inspector picker/overlay/css-baseline",
+      `${core}/inspector/inspector.test.ts`,
+      [],
+    ),
+    mk("T4", "T", "ARIA snapshot + selector scorer", `${core}/inspector/aria-snapshot.test.ts`, []),
+    mk(
+      "T5",
+      "T",
+      "Framework adapters (angular/lit/generic)",
+      `${core}/inspector/frameworks.test.ts`,
+      [],
+    ),
+    mk(
+      "T6",
+      "T",
+      "Inspector → Agent message formatter",
+      `${core}/inspector/send-to-agent.test.ts`,
+      [],
+    ),
+    mk(
+      "T7n",
+      "T",
+      "Network request interception + classify",
+      `${core}/inspector/network.test.ts`,
+      [],
+    ),
+    mk(
+      "T7p",
+      "T",
+      "Performance metrics (FCP/LCP/CLS/INP/LoAF)",
+      `${core}/inspector/performance.test.ts`,
+      [],
+    ),
+    mk("T8", "T", "Accessibility audit formatter", `${core}/inspector/accessibility.test.ts`, []),
+    mk("T9", "T", "Diff viewer chunk logic (accept/reject/collapse)", `${core}/diff-ops`, []),
+    mk("T10", "T", "AI diff-comments CRUD + resolve", `${core}/diff-comments`, []),
+    mk("T12", "T", "Checkpoint timeline model + search", `${core}/checkpoint-timeline`, ["T11"]),
+    mk("T14", "T", "Agent dashboard state + sort", `${core}/agent-dashboard`, []),
+    mk("T15", "T", "Agent wrapper spawn + env sanitize", `${core}/agent-wrapper`, []),
+    mk("T17", "T", "LSP features (semantic tokens/rename/pending)", `${core}/lsp`, []),
+    mk("T21c", "T", "Cloud agent execution scheduler", `${core}/cloud`, []),
+    mk("T21r", "T", "Remote SSH target + session", `${core}/remote`, []),
+    mk("T23", "T", "Settings UI catalog + validator", `${core}/settings-ui`, []),
+    mk("T24", "T", "Status bar model + problems summary", `${core}/status-bar`, []),
   ]
 }
 
 async function main(): Promise<number> {
   const args = parseArgs(process.argv)
-  const path = join(process.cwd(), args.tasksPath)
+  const path = resolve(process.cwd(), args.tasksPath)
 
   if (args.mode === "seed") return cmdSeed(path)
 
