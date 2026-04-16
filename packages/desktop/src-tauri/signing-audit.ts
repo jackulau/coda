@@ -41,11 +41,7 @@ export interface AuditReport {
 }
 
 export function auditSigningEnv(env: SigningEnv): AuditReport {
-  const results: PlatformAuditResult[] = [
-    auditMac(env),
-    auditWindows(env),
-    auditLinux(env),
-  ]
+  const results: PlatformAuditResult[] = [auditMac(env), auditWindows(env), auditLinux(env)]
   const requireSigned = env.CODA_REQUIRE_SIGNED === "1"
   const allSigned = results.every((r) => r.status === "signed")
   const exitCode = requireSigned && !allSigned ? 2 : 0
@@ -61,11 +57,7 @@ function auditMac(env: SigningEnv): PlatformAuditResult {
   // partial, that's an error. If all three are absent, we'll produce a
   // signed-but-not-notarized build (which gets Gatekeeper-quarantined on
   // first launch).
-  const notarizeVars = [
-    env.CODA_APPLE_ID,
-    env.CODA_APPLE_TEAM_ID,
-    env.CODA_APPLE_APP_PASSWORD,
-  ]
+  const notarizeVars = [env.CODA_APPLE_ID, env.CODA_APPLE_TEAM_ID, env.CODA_APPLE_APP_PASSWORD]
   const notarizeSet = notarizeVars.filter(Boolean).length
   if (notarizeSet > 0 && notarizeSet < 3) {
     if (!env.CODA_APPLE_ID) missing.push("CODA_APPLE_ID")
@@ -98,7 +90,8 @@ function auditWindows(env: SigningEnv): PlatformAuditResult {
     platform: "windows",
     status: "unsigned",
     missing,
-    reason: "No code-signing cert thumbprint. MSI/NSIS will be unsigned (SmartScreen will warn users).",
+    reason:
+      "No code-signing cert thumbprint. MSI/NSIS will be unsigned (SmartScreen will warn users).",
   }
 }
 
@@ -110,7 +103,8 @@ function auditLinux(env: SigningEnv): PlatformAuditResult {
     platform: "linux",
     status: "unsigned",
     missing: ["CODA_GPG_KEY_ID"],
-    reason: "No GPG key for AppImage signing. AppImage will be unsigned (acceptable on Linux but not verifiable).",
+    reason:
+      "No GPG key for AppImage signing. AppImage will be unsigned (acceptable on Linux but not verifiable).",
   }
 }
 

@@ -22,10 +22,9 @@ export interface LspRegistryEntry {
   /**
    * Optional mapping from os/arch to download URL. Used by the installer.
    */
-  releaseUrls?: Partial<Record<
-    "darwin-x64" | "darwin-arm64" | "linux-x64" | "linux-arm64" | "win32-x64",
-    string
-  >>
+  releaseUrls?: Partial<
+    Record<"darwin-x64" | "darwin-arm64" | "linux-x64" | "linux-arm64" | "win32-x64", string>
+  >
 }
 
 const R: LspRegistryEntry[] = [
@@ -83,8 +82,7 @@ const R: LspRegistryEntry[] = [
     fileExtensions: ["java"],
     serverCommand: "jdtls",
     serverArgs: [],
-    installHint:
-      "brew install jdtls (macOS) or download from https://download.eclipse.org/jdtls/",
+    installHint: "brew install jdtls (macOS) or download from https://download.eclipse.org/jdtls/",
     documentSelector: [{ scheme: "file", language: "java" }],
   },
   {
@@ -261,8 +259,9 @@ export function getServer(id: string): LspRegistryEntry | null {
 
 export function resolveForFile(path: string): LspRegistryEntry | null {
   const m = path.match(/\.([A-Za-z0-9]+)$/)
-  if (!m) return null
-  return byExt.get(m[1].toLowerCase()) ?? null
+  const ext = m?.[1]
+  if (!ext) return null
+  return byExt.get(ext.toLowerCase()) ?? null
 }
 
 /**
@@ -276,15 +275,10 @@ export interface IsInstalledProbe {
   existsInDir(dir: string, command: string): boolean
 }
 
-export function isInstalled(
-  id: string,
-  probe: IsInstalledProbe,
-  bundledDir = "",
-): boolean {
+export function isInstalled(id: string, probe: IsInstalledProbe, bundledDir = ""): boolean {
   const entry = byId.get(id)
   if (!entry) return false
   if (probe.existsOnPath(entry.serverCommand)) return true
-  if (bundledDir && probe.existsInDir(bundledDir, entry.serverCommand))
-    return true
+  if (bundledDir && probe.existsInDir(bundledDir, entry.serverCommand)) return true
   return false
 }

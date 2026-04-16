@@ -125,7 +125,8 @@ export class StdioTransport {
 
   private write(msg: JsonRpcMessage): void {
     const body = JSON.stringify(msg)
-    const header = `Content-Length: ${Buffer.byteLength(body, "utf8")}\r\n\r\n`
+    const byteLength = new TextEncoder().encode(body).byteLength
+    const header = `Content-Length: ${byteLength}\r\n\r\n`
     this.stdin.write(header + body)
   }
 
@@ -142,9 +143,7 @@ export class StdioTransport {
     while (true) {
       const headerEnd = indexOfHeader(this.buffer)
       if (headerEnd < 0) return
-      const headerStr = new TextDecoder("utf8").decode(
-        this.buffer.subarray(0, headerEnd),
-      )
+      const headerStr = new TextDecoder("utf-8").decode(this.buffer.subarray(0, headerEnd))
       const length = parseContentLength(headerStr)
       if (length === null) {
         // malformed header — drop everything up to this point and continue
@@ -157,7 +156,7 @@ export class StdioTransport {
       const bodyBytes = this.buffer.subarray(bodyStart, bodyEnd)
       this.buffer = this.buffer.subarray(bodyEnd)
       try {
-        const body = new TextDecoder("utf8").decode(bodyBytes)
+        const body = new TextDecoder("utf-8").decode(bodyBytes)
         const msg = JSON.parse(body) as JsonRpcMessage
         this.dispatch(msg)
       } catch {
@@ -217,7 +216,7 @@ function indexOfHeader(buf: Uint8Array): number {
 function parseContentLength(headerStr: string): number | null {
   for (const line of headerStr.split(/\r?\n/)) {
     const m = line.match(/^Content-Length:\s*(\d+)\s*$/i)
-    if (m) {
+    if (m?.[1]) {
       const n = Number.parseInt(m[1], 10)
       return Number.isFinite(n) && n >= 0 ? n : null
     }

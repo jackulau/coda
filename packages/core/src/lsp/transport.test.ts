@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import {
-  LspRequestTimeoutError,
-  LspTransportClosedError,
-  StdioTransport,
-} from "./transport"
+import { LspRequestTimeoutError, LspTransportClosedError, StdioTransport } from "./transport"
 
 class MockWritable {
   public chunks: string[] = []
@@ -47,7 +43,7 @@ describe("StdioTransport", () => {
     const t = new StdioTransport({ stdin, stdout })
     t.sendRequest("initialize", { foo: 1 })
     expect(stdin.chunks).toHaveLength(1)
-    const chunk = stdin.chunks[0]
+    const chunk = stdin.chunks[0] ?? ""
     expect(chunk).toMatch(/^Content-Length: \d+\r\n\r\n/)
     const body = parseFrame(chunk) as Record<string, unknown>
     expect(body.jsonrpc).toBe("2.0")
@@ -70,7 +66,9 @@ describe("StdioTransport", () => {
     const stdout = new MockReadable()
     const t = new StdioTransport({ stdin, stdout })
     const promise = t.sendRequest("initialize")
-    stdout.emit(framed({ jsonrpc: "2.0", id: 1, error: { code: -32601, message: "Method not found" } }))
+    stdout.emit(
+      framed({ jsonrpc: "2.0", id: 1, error: { code: -32601, message: "Method not found" } }),
+    )
     await expect(promise).rejects.toThrow(/-32601/)
   })
 
@@ -80,11 +78,13 @@ describe("StdioTransport", () => {
     const t = new StdioTransport({ stdin, stdout })
     const received: unknown[] = []
     t.onNotification("textDocument/publishDiagnostics", (p) => received.push(p))
-    stdout.emit(framed({
-      jsonrpc: "2.0",
-      method: "textDocument/publishDiagnostics",
-      params: { uri: "file:///a.ts", diagnostics: [] },
-    }))
+    stdout.emit(
+      framed({
+        jsonrpc: "2.0",
+        method: "textDocument/publishDiagnostics",
+        params: { uri: "file:///a.ts", diagnostics: [] },
+      }),
+    )
     expect(received).toHaveLength(1)
     expect((received[0] as { uri: string }).uri).toBe("file:///a.ts")
   })
@@ -129,7 +129,7 @@ describe("StdioTransport", () => {
     const stdin = new MockWritable()
     const t = new StdioTransport({ stdin, stdout: new MockReadable() })
     t.sendNotification("initialized")
-    const body = parseFrame(stdin.chunks[0]) as Record<string, unknown>
+    const body = parseFrame(stdin.chunks[0] ?? "") as Record<string, unknown>
     expect(body.id).toBeUndefined()
     expect(body.method).toBe("initialized")
   })
@@ -159,7 +159,7 @@ describe("StdioTransport", () => {
     const t = new StdioTransport({ stdin: new MockWritable(), stdout })
     const p = t.sendRequest("ping")
     // bad frame followed by a good one
-    stdout.emit(`Content-Length: 9\r\n\r\n{notjson}`)
+    stdout.emit("Content-Length: 9\r\n\r\n{notjson}")
     stdout.emit(framed({ jsonrpc: "2.0", id: 1, result: "ok" }))
     await expect(p).resolves.toBe("ok")
   })

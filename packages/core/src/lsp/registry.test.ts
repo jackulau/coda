@@ -1,10 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import {
-  allServers,
-  getServer,
-  isInstalled,
-  resolveForFile,
-} from "./registry"
+import { allServers, getServer, isInstalled, resolveForFile } from "./registry"
 
 describe("LSP registry", () => {
   test("has 22 entries covering required languages", () => {
@@ -12,9 +7,28 @@ describe("LSP registry", () => {
     expect(list.length).toBeGreaterThanOrEqual(22)
     const ids = new Set(list.map((e) => e.id))
     const required = [
-      "typescript", "javascript", "python", "rust", "go", "java",
-      "c", "cpp", "csharp", "ruby", "php", "swift", "kotlin", "scala",
-      "lua", "bash", "html", "css", "json", "yaml", "markdown", "sql",
+      "typescript",
+      "javascript",
+      "python",
+      "rust",
+      "go",
+      "java",
+      "c",
+      "cpp",
+      "csharp",
+      "ruby",
+      "php",
+      "swift",
+      "kotlin",
+      "scala",
+      "lua",
+      "bash",
+      "html",
+      "css",
+      "json",
+      "yaml",
+      "markdown",
+      "sql",
     ]
     for (const lang of required) {
       expect(ids.has(lang)).toBe(true)

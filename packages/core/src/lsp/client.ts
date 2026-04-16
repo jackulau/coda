@@ -3,18 +3,9 @@
 // advertised capabilities so callers can gate features on what the server
 // actually supports.
 
-import {
-  LspRequestTimeoutError,
-  LspTransportClosedError,
-  StdioTransport,
-} from "./transport"
+import { LspRequestTimeoutError, LspTransportClosedError, type StdioTransport } from "./transport"
 
-export type LspClientState =
-  | "starting"
-  | "initialized"
-  | "running"
-  | "stopping"
-  | "stopped"
+export type LspClientState = "starting" | "initialized" | "running" | "stopping" | "stopped"
 
 export interface ServerCapabilities {
   textDocumentSync?: unknown
@@ -116,14 +107,12 @@ export class LspClient {
         lastErr = err
         if (err instanceof LspTransportClosedError) break
         if (attempt < this.initRetries) {
-          await delay(this.initBackoffMs * Math.pow(2, attempt))
+          await delay(this.initBackoffMs * 2 ** attempt)
         }
       }
     }
     this._state = "stopped"
-    throw lastErr instanceof Error
-      ? lastErr
-      : new Error("LspClient.start failed")
+    throw lastErr instanceof Error ? lastErr : new Error("LspClient.start failed")
   }
 
   async sendRequest<T = unknown>(method: string, params?: unknown): Promise<T> {
@@ -144,10 +133,7 @@ export class LspClient {
     if (this._state === "stopped" || this._state === "stopping") return
     this._state = "stopping"
     try {
-      await withTimeout(
-        this.transport.sendRequest("shutdown"),
-        this.shutdownTimeoutMs,
-      )
+      await withTimeout(this.transport.sendRequest("shutdown"), this.shutdownTimeoutMs)
       this.transport.sendNotification("exit")
     } catch {
       // shutdown failed or timed out — escalate to process kill
@@ -160,9 +146,7 @@ export class LspClient {
 
   private assertRunning(method: string): void {
     if (this._state !== "running") {
-      throw new Error(
-        `LspClient.${method} called in state ${this._state}; client must be running`,
-      )
+      throw new Error(`LspClient.${method} called in state ${this._state}; client must be running`)
     }
   }
 }
@@ -173,10 +157,7 @@ function delay(ms: number): Promise<void> {
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new LspRequestTimeoutError("shutdown", "n/a")),
-      ms,
-    )
+    const timer = setTimeout(() => reject(new LspRequestTimeoutError("shutdown", "n/a")), ms)
     p.then(
       (v) => {
         clearTimeout(timer)

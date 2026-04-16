@@ -57,14 +57,16 @@ describe("LspClient", () => {
     const startPromise = client.start()
 
     // Respond to the initialize
-    stdout.emit(framed({
-      jsonrpc: "2.0",
-      id: 1,
-      result: {
-        capabilities: { hoverProvider: true, completionProvider: {} },
-        serverInfo: { name: "mock-ls", version: "1.0" },
-      },
-    }))
+    stdout.emit(
+      framed({
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          capabilities: { hoverProvider: true, completionProvider: {} },
+          serverInfo: { name: "mock-ls", version: "1.0" },
+        },
+      }),
+    )
     await startPromise
 
     expect(client.state).toBe("running")
@@ -76,8 +78,10 @@ describe("LspClient", () => {
 
     // Should have written initialize + initialized
     expect(stdin.chunks.length).toBe(2)
-    expect((parseBody(stdin.chunks[0]) as { method: string }).method).toBe("initialize")
-    expect((parseBody(stdin.chunks[1]) as { method: string }).method).toBe("initialized")
+    const first = stdin.chunks[0] ?? ""
+    const second = stdin.chunks[1] ?? ""
+    expect((parseBody(first) as { method: string }).method).toBe("initialize")
+    expect((parseBody(second) as { method: string }).method).toBe("initialized")
   })
 
   test("retries initialize on transient failure", async () => {
@@ -101,11 +105,13 @@ describe("LspClient", () => {
     )
     expect(activeInit.length).toBeGreaterThanOrEqual(2)
     const lastId = (parseBody(activeInit.at(-1) as string) as { id: number }).id
-    stdout.emit(framed({
-      jsonrpc: "2.0",
-      id: lastId,
-      result: { capabilities: {} },
-    }))
+    stdout.emit(
+      framed({
+        jsonrpc: "2.0",
+        id: lastId,
+        result: { capabilities: {} },
+      }),
+    )
     await startPromise
 
     expect(client.state).toBe("running")
@@ -154,9 +160,7 @@ describe("LspClient", () => {
 
     expect(client.state).toBe("stopped")
     // should have written shutdown then exit
-    const methods = stdin.chunks.map(
-      (c) => (parseBody(c) as { method?: string }).method,
-    )
+    const methods = stdin.chunks.map((c) => (parseBody(c) as { method?: string }).method)
     expect(methods).toContain("shutdown")
     expect(methods).toContain("exit")
   })
@@ -192,11 +196,13 @@ describe("LspClient", () => {
     })
     const received: unknown[] = []
     client.onNotification("textDocument/publishDiagnostics", (p) => received.push(p))
-    stdout.emit(framed({
-      jsonrpc: "2.0",
-      method: "textDocument/publishDiagnostics",
-      params: { uri: "file:///a.ts" },
-    }))
+    stdout.emit(
+      framed({
+        jsonrpc: "2.0",
+        method: "textDocument/publishDiagnostics",
+        params: { uri: "file:///a.ts" },
+      }),
+    )
     expect(received).toHaveLength(1)
   })
 })

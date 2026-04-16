@@ -1,5 +1,14 @@
 import { describe, expect, test } from "bun:test"
-import { auditSigningEnv, formatReport } from "./signing-audit"
+import { type PlatformAuditResult, auditSigningEnv, formatReport } from "./signing-audit"
+
+function findPlatform(
+  results: PlatformAuditResult[],
+  platform: PlatformAuditResult["platform"],
+): PlatformAuditResult {
+  const r = results.find((p) => p.platform === platform)
+  if (!r) throw new Error(`no result for platform ${platform}`)
+  return r
+}
 
 describe("auditSigningEnv", () => {
   test("fully signed env — all green, exit 0", () => {
@@ -39,7 +48,7 @@ describe("auditSigningEnv", () => {
       CODA_APPLE_PROVIDER: "y",
       CODA_APPLE_ID: "z", // only one of 3 notarize vars
     })
-    const mac = r.results.find((p) => p.platform === "macos")!
+    const mac = findPlatform(r.results, "macos")
     expect(mac.status).toBe("signed")
     expect(mac.reason).toMatch(/Partial notarization/)
     expect(mac.missing).toContain("CODA_APPLE_TEAM_ID")
@@ -48,14 +57,14 @@ describe("auditSigningEnv", () => {
 
   test("windows signed when thumbprint set", () => {
     const r = auditSigningEnv({ CODA_WIN_CERT_THUMBPRINT: "ABCD" })
-    const win = r.results.find((p) => p.platform === "windows")!
+    const win = findPlatform(r.results, "windows")
     expect(win.status).toBe("signed")
     expect(win.missing).toHaveLength(0)
   })
 
   test("linux signed when GPG key set", () => {
     const r = auditSigningEnv({ CODA_GPG_KEY_ID: "KEY123" })
-    const lin = r.results.find((p) => p.platform === "linux")!
+    const lin = findPlatform(r.results, "linux")
     expect(lin.status).toBe("signed")
   })
 
