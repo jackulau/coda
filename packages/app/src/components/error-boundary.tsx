@@ -10,7 +10,9 @@ export const ErrorBoundary: Component<Props> = (props) => {
   onError((e) => {
     setErr(e instanceof Error ? e : new Error(String(e)))
   })
-  const reset = (): void => setErr(null)
+  const reset = (): void => {
+    setErr(null)
+  }
   return (
     <Show when={err()} fallback={props.children}>
       {(e) => props.fallback(e(), reset)}
