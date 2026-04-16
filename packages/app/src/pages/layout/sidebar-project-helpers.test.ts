@@ -12,9 +12,33 @@ describe("sidebar project helpers (B1)", () => {
       { id: "p2", name: "Two", rootPath: "/b", expanded: true, createdAt: 0 },
     ]
     const workspaces = [
-      { id: "a", projectId: "p1", name: "r1", cwd: "/", baseBranch: "main", pinned: false, createdAt: 0 },
-      { id: "b", projectId: "p1", name: "r2", cwd: "/", baseBranch: "main", pinned: false, createdAt: 0 },
-      { id: "c", projectId: "p2", name: "r3", cwd: "/", baseBranch: "main", pinned: false, createdAt: 0 },
+      {
+        id: "a",
+        projectId: "p1",
+        name: "r1",
+        cwd: "/",
+        baseBranch: "main",
+        pinned: false,
+        createdAt: 0,
+      },
+      {
+        id: "b",
+        projectId: "p1",
+        name: "r2",
+        cwd: "/",
+        baseBranch: "main",
+        pinned: false,
+        createdAt: 0,
+      },
+      {
+        id: "c",
+        projectId: "p2",
+        name: "r3",
+        cwd: "/",
+        baseBranch: "main",
+        pinned: false,
+        createdAt: 0,
+      },
     ]
     const grouped = Sidebar.groupWorkspacesByProject(projects, workspaces)
     const byProject = new Map(grouped.map((g) => [g.projectId, g]))
@@ -24,7 +48,15 @@ describe("sidebar project helpers (B1)", () => {
 
   test("workspaces with unknown project id go to the UNASSIGNED bucket", () => {
     const workspaces = [
-      { id: "x", projectId: "ghost", name: "x", cwd: "/", baseBranch: "main", pinned: false, createdAt: 0 },
+      {
+        id: "x",
+        projectId: "ghost",
+        name: "x",
+        cwd: "/",
+        baseBranch: "main",
+        pinned: false,
+        createdAt: 0,
+      },
     ]
     const grouped = Sidebar.groupWorkspacesByProject([], workspaces)
     expect(grouped.length).toBe(1)

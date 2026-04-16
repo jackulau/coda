@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import {
-  generateSessionToken,
   RPC_FETCH_TIMEOUT_MS,
   type RpcRequest,
+  generateSessionToken,
   signRequest,
   verifySignature,
 } from "./index"

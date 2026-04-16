@@ -3,12 +3,7 @@ import { parsePorcelain } from "./status"
 
 describe("git operations — parsePorcelain (I3)", () => {
   test("parses a modified+untracked mix", () => {
-    const stdout = [
-      " M src/a.ts",
-      "?? build/",
-      "M  src/b.ts",
-      "R  old.ts -> new.ts",
-    ].join("\n")
+    const stdout = [" M src/a.ts", "?? build/", "M  src/b.ts", "R  old.ts -> new.ts"].join("\n")
     const rows = parsePorcelain(stdout)
     expect(rows.length).toBe(4)
     expect(rows.find((r) => r.path === "src/a.ts")?.worktree).toBe("modified")

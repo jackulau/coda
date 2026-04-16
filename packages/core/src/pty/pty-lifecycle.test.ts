@@ -47,7 +47,11 @@ describe("PtyLifecycleManager.spawn", () => {
 
   test("spawn refuses when workspace missing → NO_WORKSPACE", async () => {
     const mgr = new PtyLifecycleManager(new MockPtyDriver(), probe({ "/tmp/ok": "ok" }))
-    const res = await mgr.spawn({ workspaceId: "00000000-0000-0000-0000-000000000999", title: "t", cmd: "bash" })
+    const res = await mgr.spawn({
+      workspaceId: "00000000-0000-0000-0000-000000000999",
+      title: "t",
+      cmd: "bash",
+    })
     expect("code" in res && res.code).toBe("NO_WORKSPACE")
   })
 

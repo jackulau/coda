@@ -9,7 +9,6 @@ afterEach(() => {
 
 function make(overrides: Partial<ProjectInfo> & { id: string }): ProjectInfo {
   return ProjectInfo.parse({
-    id: overrides.id,
     name: "Project A",
     rootPath: "/tmp/p",
     expanded: true,
@@ -40,9 +39,9 @@ describe("Project store (P3)", () => {
   })
 
   test("update on missing id throws", () => {
-    expect(() => ProjectStore.update("00000000-0000-0000-0000-000000000999", { name: "x" })).toThrow(
-      /not found/,
-    )
+    expect(() =>
+      ProjectStore.update("00000000-0000-0000-0000-000000000999", { name: "x" }),
+    ).toThrow(/not found/)
   })
 
   test("uiOrder update persists", () => {

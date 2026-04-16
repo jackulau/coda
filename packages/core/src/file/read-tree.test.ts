@@ -36,10 +36,7 @@ describe("read-tree flattening + sorting (D1)", () => {
   })
 
   test("collapsed directory hides children", () => {
-    const entries: FileNode[] = [
-      f("/root/src", "directory"),
-      f("/root/src/index.ts"),
-    ]
+    const entries: FileNode[] = [f("/root/src", "directory"), f("/root/src/index.ts")]
     const out = flattenTree(entries, { rootPath: "/root", expandedPaths: new Set() })
     expect(out.length).toBe(1)
     expect(out[0]?.path).toBe("/root/src")

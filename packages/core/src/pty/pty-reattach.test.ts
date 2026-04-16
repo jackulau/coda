@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { planReattach, type PtySessionSnapshot } from "../pty-reattach/reattach"
+import { type PtySessionSnapshot, planReattach } from "../pty-reattach/reattach"
 
 function session(over: Partial<PtySessionSnapshot> = {}): PtySessionSnapshot {
   return {
@@ -28,7 +28,9 @@ describe("planReattach across sidecar restart", () => {
   })
 
   test("exited session with non-zero code → history (crashed)", () => {
-    const plan = planReattach([session({ exitedAt: 1000, exitCode: 137 })], { cwdExists: () => true })
+    const plan = planReattach([session({ exitedAt: 1000, exitCode: 137 })], {
+      cwdExists: () => true,
+    })
     expect(plan[0]).toMatchObject({ kind: "history", reason: "crashed" })
   })
 

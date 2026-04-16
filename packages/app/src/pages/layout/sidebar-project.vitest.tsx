@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from "@solidjs/testing-library"
 import type { ProjectInfo } from "@coda/core/project"
+import { cleanup, render, screen } from "@solidjs/testing-library"
 import { afterEach, describe, expect, test } from "vitest"
 import { LayoutProvider } from "../../context/layout"
 import { WorkspaceProvider } from "../../context/workspace"

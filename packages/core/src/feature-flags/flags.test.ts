@@ -5,17 +5,23 @@ const CTX_STABLE = { app: { version: "2.0.0", channel: "stable" as const }, user
 
 describe("feature flags + kill-switch (Y4)", () => {
   test("enabled flag returns true", () => {
-    const e = new StaticFlagEvaluator([{ key: "test", enabled: true, rolloutPercent: 100, killSwitch: false }])
+    const e = new StaticFlagEvaluator([
+      { key: "test", enabled: true, rolloutPercent: 100, killSwitch: false },
+    ])
     expect(e.isOn("test", CTX_STABLE)).toBe(true)
   })
 
   test("disabled flag returns false", () => {
-    const e = new StaticFlagEvaluator([{ key: "test", enabled: false, rolloutPercent: 100, killSwitch: false }])
+    const e = new StaticFlagEvaluator([
+      { key: "test", enabled: false, rolloutPercent: 100, killSwitch: false },
+    ])
     expect(e.isOn("test", CTX_STABLE)).toBe(false)
   })
 
   test("kill switch overrides enabled", () => {
-    const e = new StaticFlagEvaluator([{ key: "test", enabled: true, rolloutPercent: 100, killSwitch: false }])
+    const e = new StaticFlagEvaluator([
+      { key: "test", enabled: true, rolloutPercent: 100, killSwitch: false },
+    ])
     e.killSwitch("test")
     expect(e.isOn("test", CTX_STABLE)).toBe(false)
   })
@@ -46,8 +52,15 @@ describe("feature flags + kill-switch (Y4)", () => {
   })
 
   test("list() returns current flags", () => {
-    const e = new StaticFlagEvaluator([{ key: "a", enabled: true, rolloutPercent: 100, killSwitch: false }])
+    const e = new StaticFlagEvaluator([
+      { key: "a", enabled: true, rolloutPercent: 100, killSwitch: false },
+    ])
     e.upsert({ key: "b", enabled: false, rolloutPercent: 100, killSwitch: false })
-    expect(e.list().map((f) => f.key).sort()).toEqual(["a", "b"])
+    expect(
+      e
+        .list()
+        .map((f) => f.key)
+        .sort(),
+    ).toEqual(["a", "b"])
   })
 })

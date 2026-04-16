@@ -74,9 +74,9 @@ describe("edge cases", () => {
   })
 
   test("update on missing workspace throws", () => {
-    expect(() => WorkspaceStore.update("00000000-0000-0000-0000-000000000099", { uiOrder: 1 })).toThrow(
-      /not found/,
-    )
+    expect(() =>
+      WorkspaceStore.update("00000000-0000-0000-0000-000000000099", { uiOrder: 1 }),
+    ).toThrow(/not found/)
   })
 })
 

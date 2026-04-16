@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import {
   DEFAULT_TERMINAL_SETTINGS,
-  mergeSettings,
   TerminalSettings,
+  mergeSettings,
 } from "../terminal-settings/settings"
 
 describe("Terminal settings (pty-settings.test.ts → settings module)", () => {

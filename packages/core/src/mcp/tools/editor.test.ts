@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import { type FileRepository, saveFileTool } from "../save-file"
+import type { ToolContext } from "../tools"
+
+const CTX: ToolContext = { workspaceId: null, workspaceCwd: null, userRequestedAt: 0 }
 
 class MemRepo implements FileRepository {
   private files = new Map<string, { content: string; revision: number }>()
@@ -18,10 +21,10 @@ class MemRepo implements FileRepository {
 }
 
 describe("coda.saveFile MCP tool (D8)", () => {
-  test("allowed path writes and reports bytes + revision", () => {
+  test("allowed path writes and reports bytes + revision", async () => {
     const repo = new MemRepo()
     const tool = saveFileTool(repo, ["/allowed"])
-    const res = tool.run({ path: "/allowed/file.ts", content: "hello" })
+    const res = await tool.run({ path: "/allowed/file.ts", content: "hello" }, CTX)
     expect(res.bytesWritten).toBe(5)
     expect(res.newRevision).toBe(1)
   })
@@ -37,23 +40,26 @@ describe("coda.saveFile MCP tool (D8)", () => {
   test("ifMatchRevision mismatch rejects optimistic write", () => {
     const repo = new MemRepo()
     const tool = saveFileTool(repo, ["/allowed"])
-    tool.run({ path: "/allowed/a.ts", content: "v1" })
-    tool.run({ path: "/allowed/a.ts", content: "v2" })
+    tool.run({ path: "/allowed/a.ts", content: "v1" }, CTX)
+    tool.run({ path: "/allowed/a.ts", content: "v2" }, CTX)
     // file is now at revision 2; supplying ifMatchRevision=1 must fail
-    expect(() => tool.run({ path: "/allowed/a.ts", content: "v3", ifMatchRevision: 1 })).toThrow(
-      /revision mismatch/,
-    )
+    expect(() =>
+      tool.run({ path: "/allowed/a.ts", content: "v3", ifMatchRevision: 1 }, CTX),
+    ).toThrow(/revision mismatch/)
   })
 
-  test("ifMatchRevision match allows write", () => {
+  test("ifMatchRevision match allows write", async () => {
     const repo = new MemRepo()
     const tool = saveFileTool(repo, ["/allowed"])
-    const first = tool.run({ path: "/allowed/a.ts", content: "v1" })
-    const second = tool.run({
-      path: "/allowed/a.ts",
-      content: "v2",
-      ifMatchRevision: first.newRevision,
-    })
+    const first = await tool.run({ path: "/allowed/a.ts", content: "v1" }, CTX)
+    const second = await tool.run(
+      {
+        path: "/allowed/a.ts",
+        content: "v2",
+        ifMatchRevision: first.newRevision,
+      },
+      CTX,
+    )
     expect(second.newRevision).toBe(2)
   })
 })

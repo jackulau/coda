@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render } from "@solidjs/testing-library"
 import { afterEach, describe, expect, test } from "vitest"
 import { LayoutProvider } from "../../context/layout"
-import { type WorkspaceUiRow, WorkspaceProvider } from "../../context/workspace"
+import { WorkspaceProvider, type WorkspaceUiRow } from "../../context/workspace"
 import { WorkspaceRow } from "./sidebar-workspace"
 
 afterEach(cleanup)

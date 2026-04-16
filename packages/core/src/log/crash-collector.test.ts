@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { buildDump, CrashDump, type DumpInput, redactDump } from "../crash/dump"
+import { CrashDump, type DumpInput, buildDump, redactDump } from "../crash/dump"
 
 function input(over: Partial<DumpInput> = {}): DumpInput {
   return {

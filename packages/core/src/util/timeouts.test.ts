@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { DEFAULT_TIMEOUT_MS } from "../protocol/timeout"
 import { RPC_FETCH_TIMEOUT_MS } from "../protocol/index"
+import { DEFAULT_TIMEOUT_MS } from "../protocol/timeout"
 
 describe("timeout budgets catalog (J6: audit of every I/O call)", () => {
   test("DEFAULT_TIMEOUT_MS is 5 seconds (sidecar RPC budget)", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { runShutdown, type ShutdownStage, topologicalOrder } from "../lifecycle/shutdown"
+import { type ShutdownStage, runShutdown, topologicalOrder } from "../lifecycle/shutdown"
 
 describe("graceful shutdown (J8)", () => {
   test("topologicalOrder respects dependsOn", () => {
@@ -22,9 +22,27 @@ describe("graceful shutdown (J8)", () => {
   test("runShutdown runs every stage in order", async () => {
     const seen: string[] = []
     const stages: ShutdownStage[] = [
-      { name: "a", priority: 1, run: () => { seen.push("a") } },
-      { name: "b", priority: 2, run: () => { seen.push("b") } },
-      { name: "c", priority: 3, run: () => { seen.push("c") } },
+      {
+        name: "a",
+        priority: 1,
+        run: () => {
+          seen.push("a")
+        },
+      },
+      {
+        name: "b",
+        priority: 2,
+        run: () => {
+          seen.push("b")
+        },
+      },
+      {
+        name: "c",
+        priority: 3,
+        run: () => {
+          seen.push("c")
+        },
+      },
     ]
     const result = await runShutdown(stages)
     expect(seen).toEqual(["a", "b", "c"])
@@ -34,8 +52,21 @@ describe("graceful shutdown (J8)", () => {
   test("runShutdown collects errors but keeps running other stages", async () => {
     const seen: string[] = []
     const stages: ShutdownStage[] = [
-      { name: "a", priority: 1, run: () => { seen.push("a"); throw new Error("boom") } },
-      { name: "b", priority: 2, run: () => { seen.push("b") } },
+      {
+        name: "a",
+        priority: 1,
+        run: () => {
+          seen.push("a")
+          throw new Error("boom")
+        },
+      },
+      {
+        name: "b",
+        priority: 2,
+        run: () => {
+          seen.push("b")
+        },
+      },
     ]
     const result = await runShutdown(stages)
     expect(seen).toEqual(["a", "b"])

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { abortableSignal, TimeoutError, withTimeout } from "../protocol/timeout"
+import { TimeoutError, abortableSignal, withTimeout } from "../protocol/timeout"
 
 describe("withTimeout (J6: timeout budgets)", () => {
   test("resolves when work completes before budget", async () => {
