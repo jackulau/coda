@@ -58,7 +58,11 @@ export class TasksState {
   }
 
   next(now: number): TaskEntry | null {
-    const verified = new Set(this.list().filter((t) => t.status === "verified").map((t) => t.id))
+    const verified = new Set(
+      this.list()
+        .filter((t) => t.status === "verified")
+        .map((t) => t.id),
+    )
     const candidates = this.list().filter(
       (t) => t.status === "pending" && t.dependencies.every((d) => verified.has(d)),
     )

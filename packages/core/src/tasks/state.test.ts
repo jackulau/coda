@@ -80,9 +80,7 @@ describe("TasksState", () => {
   })
 
   test("deserialize rejects wrong version", () => {
-    expect(() =>
-      TasksState.deserialize(JSON.stringify({ version: 99, tasks: {} })),
-    ).toThrow()
+    expect(() => TasksState.deserialize(JSON.stringify({ version: 99, tasks: {} }))).toThrow()
   })
 
   test("markVerified on missing task throws", () => {

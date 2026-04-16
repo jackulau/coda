@@ -230,9 +230,23 @@ function seedEntries(): Tasks.TaskEntry[] {
     mk("U2", "U", "Command palette fuzzy scorer", `${core}/palette`, ["A1"]),
     mk("U3", "U", "Shortcut registry", `${core}/shortcuts`, ["A1"]),
     mk("X2", "X", "Update channel selector", `${core}/update`, []),
-    mk("Y1", "Y", "Log writer + redaction", `${core}/log`, []),
+    mk(
+      "Y1",
+      "Y",
+      "Log writer + redaction",
+      `${core}/log/writer.test.ts ${core}/log/redact.test.ts`,
+      [],
+    ),
+    mk("Y2", "Y", "Log viewer query + filter", `${core}/log/viewer.test.ts`, ["Y1"]),
     mk("Y4", "Y", "Feature flags + kill switch", `${core}/flags`, []),
     mk("0.1", "0", "TASKS.json state machine", `${core}/tasks`, []),
+    mk("D7", "D", "Find + replace across files", `${core}/search`, []),
+    mk("I2", "I", "Problems panel aggregation", `${core}/problems`, []),
+    mk("I3", "I", "Git status porcelain parser", `${core}/git`, []),
+    mk("J8", "J", "Graceful shutdown topology", `${core}/lifecycle`, ["A1"]),
+    mk("V3", "V", "Reduced-motion policy", `${core}/a11y`, []),
+    mk("U1", "U", "Menu bar model + disabled evaluator", `${core}/menu`, []),
+    mk("U4", "U", "Notification queue (dedup + capacity)", `${core}/notify`, []),
   ]
 }
 
