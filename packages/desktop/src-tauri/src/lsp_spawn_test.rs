@@ -11,8 +11,8 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use crate::lsp_spawn::{
-    build_command, kill_with_grace, resolve_server_binary, ChannelRegistry, LspServerSpec,
-    RateLimiter, KILL_GRACE, LSP_DIR_ENV,
+    build_command, kill_lsp_server, kill_with_grace, resolve_server_binary, spawn_lsp_server,
+    ChannelRegistry, LspServerSpec, RateLimiter, KILL_GRACE, LSP_DIR_ENV,
 };
 
 #[test]
@@ -87,6 +87,74 @@ async fn lsp_spawn_kill_with_grace_cleans_up_a_long_runner() {
     let graceful = kill_with_grace(&mut child, Duration::from_millis(300)).await;
     assert!(!graceful, "TERM-ignoring child must escalate to KILL");
     assert!(child.try_wait().expect("try_wait").is_some());
+}
+
+#[tokio::test]
+async fn lsp_spawn_spawn_lsp_server_returns_pid_and_channel() {
+    // Use /bin/sh as a fake "LSP server" — the spawner doesn't care what the
+    // child is; it only needs a valid executable to fork.
+    let root = tempdir("spawn-wrapper");
+    let bin = root.join("fake-server");
+    fs::write(&bin, b"#!/bin/sh\nexec sleep 60\n").unwrap();
+    let mut perms = std::fs::metadata(&bin).unwrap().permissions();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&bin, perms).unwrap();
+    }
+    let _ = perms;
+    let spec = LspServerSpec {
+        id: "test".into(),
+        binary: "fake-server".into(),
+        args: vec![],
+    };
+    let registry = ChannelRegistry::new();
+    let workspace = tempdir("spawn-ws");
+    let coda = root.to_str().unwrap();
+    let result = spawn_lsp_server(&spec, &workspace, &registry, Some(coda), None)
+        .await
+        .expect("spawn");
+    assert!(result.pid > 0, "pid must be populated");
+    assert!(result.channel >= 1, "channel id must be allocated");
+    assert_eq!(registry.active_count(), 1);
+    // Clean up.
+    let _ = kill_lsp_server(&registry, result.channel, Duration::from_millis(200)).await;
+    assert_eq!(registry.active_count(), 0);
+}
+
+#[tokio::test]
+async fn lsp_spawn_spawn_lsp_server_errors_on_missing_workspace() {
+    let spec = LspServerSpec {
+        id: "x".into(),
+        binary: "sh".into(),
+        args: vec![],
+    };
+    let registry = ChannelRegistry::new();
+    let missing = PathBuf::from("/nonexistent/path/for/lsp/test");
+    let err = spawn_lsp_server(&spec, &missing, &registry, None, None)
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(
+            err,
+            crate::lsp_spawn::LspSpawnError::MissingWorkspace(_)
+        ),
+        "expected MissingWorkspace, got {:?}",
+        err
+    );
+}
+
+#[tokio::test]
+async fn lsp_spawn_kill_lsp_server_unknown_channel_errors() {
+    let registry = ChannelRegistry::new();
+    let err = kill_lsp_server(&registry, 9999, Duration::from_millis(50))
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        err,
+        crate::lsp_spawn::LspSpawnError::ChannelNotFound(9999)
+    ));
 }
 
 fn which_sh() -> PathBuf {

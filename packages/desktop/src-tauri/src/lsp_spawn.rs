@@ -289,6 +289,52 @@ pub fn build_command(
     cmd
 }
 
+/// Resolve a spec → spawn the process → register a channel → return PID+channel.
+///
+/// This is the bridge the Tauri `#[command] fn spawn_lsp_server(...)` calls into.
+/// The Tauri command itself is thin; the real logic sits here so it's testable
+/// without a Tauri `AppHandle`.
+pub async fn spawn_lsp_server(
+    spec: &LspServerSpec,
+    workspace_root: &PathBuf,
+    registry: &ChannelRegistry,
+    coda_lsp_dir: Option<&str>,
+    bundled_root: Option<&PathBuf>,
+) -> Result<SpawnResult, LspSpawnError> {
+    if !workspace_root.exists() {
+        return Err(LspSpawnError::MissingWorkspace(
+            workspace_root.display().to_string(),
+        ));
+    }
+    let binary = resolve_server_binary(spec, coda_lsp_dir, bundled_root)?;
+    let mut cmd = build_command(&binary, &spec.args, workspace_root);
+    let child = cmd.spawn()?;
+    let pid = child.id().ok_or_else(|| {
+        LspSpawnError::Io("spawned child has no pid (already exited?)".into())
+    })?;
+    let channel = registry.allocate(&spec.id);
+    registry.attach_child(channel, child)?;
+    Ok(SpawnResult { channel, pid })
+}
+
+/// Kill an LSP server by channel id. Looks up the registry, removes the entry,
+/// and gracefully terminates the child.
+pub async fn kill_lsp_server(
+    registry: &ChannelRegistry,
+    channel: u64,
+    grace: Duration,
+) -> Result<bool, LspSpawnError> {
+    let entry = registry
+        .remove(channel)
+        .ok_or(LspSpawnError::ChannelNotFound(channel))?;
+    let mut guard = entry.lock().expect("channel lock");
+    if let Some(child) = guard.child.as_mut() {
+        Ok(kill_with_grace(child, grace).await)
+    } else {
+        Ok(true)
+    }
+}
+
 #[cfg(test)]
 mod lsp_spawn_inline_tests {
     use super::*;
