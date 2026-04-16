@@ -1,7 +1,11 @@
 use std::sync::Mutex;
 
+pub mod lsp_spawn;
 pub mod sidecar_token;
 pub mod url_guard;
+
+#[cfg(test)]
+mod lsp_spawn_test;
 
 #[cfg(test)]
 mod tests_extra;

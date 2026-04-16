@@ -328,6 +328,7 @@ dependencies = [
 name = "coda-desktop"
 version = "2.0.0-alpha.0"
 dependencies = [
+ "libc",
  "rusqlite",
  "serde",
  "serde_json",
