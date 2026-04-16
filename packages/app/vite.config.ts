@@ -8,10 +8,12 @@ const isTauri = process.env.TAURI_ENV_PLATFORM !== undefined
 export default defineConfig({
   plugins: [solid()],
   resolve: {
-    alias: {
-      "@coda/core": resolve(__dirname, "../core/src/index.ts"),
-      "@coda/ui": resolve(__dirname, "../ui/src/index.ts"),
-    },
+    alias: [
+      { find: /^@coda\/core$/, replacement: resolve(__dirname, "../core/src/index.ts") },
+      { find: /^@coda\/core\/(.*)$/, replacement: resolve(__dirname, "../core/src/$1") },
+      { find: /^@coda\/ui$/, replacement: resolve(__dirname, "../ui/src/index.ts") },
+      { find: /^@coda\/ui\/(.*)$/, replacement: resolve(__dirname, "../ui/src/$1") },
+    ],
   },
   clearScreen: false,
   server: {
