@@ -7,6 +7,7 @@ const t = (overrides: Partial<TaskEntry> & { id: string }): TaskEntry => ({
   status: "pending",
   dependencies: [],
   startedAt: null,
+  startedAtSha: null,
   completedAt: null,
   attempts: 0,
   lastError: null,

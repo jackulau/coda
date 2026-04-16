@@ -9,6 +9,7 @@ const task = (overrides: Partial<TaskEntry> = {}): TaskEntry => ({
   status: "in_progress",
   dependencies: [],
   startedAt: 1,
+  startedAtSha: null,
   completedAt: null,
   attempts: 1,
   lastError: null,

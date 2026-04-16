@@ -3,6 +3,9 @@ use std::sync::Mutex;
 pub mod sidecar_token;
 pub mod url_guard;
 
+#[cfg(test)]
+mod tests_extra;
+
 pub use sidecar_token::SessionToken;
 pub use url_guard::is_local_url;
 

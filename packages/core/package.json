@@ -13,7 +13,17 @@
     "./github": "./src/github/index.ts",
     "./port": "./src/port/index.ts",
     "./protocol": "./src/protocol/index.ts",
-    "./resource": "./src/resource/registry.ts"
+    "./resource": "./src/resource/registry.ts",
+    "./terminal-settings/*": "./src/terminal-settings/*.ts",
+    "./problems/*": "./src/problems/*.ts",
+    "./git/*": "./src/git/*.ts",
+    "./update/*": "./src/update/*.ts",
+    "./menu/*": "./src/menu/*.ts",
+    "./palette/*": "./src/palette/*.ts",
+    "./shortcuts/*": "./src/shortcuts/*.ts",
+    "./workspace/*": "./src/workspace/*.ts",
+    "./browser/*": "./src/browser/*.ts",
+    "./port/*": "./src/port/*.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
