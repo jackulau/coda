@@ -40,17 +40,47 @@ export interface AuditReport {
   exitCode: 0 | 2
 }
 
-export function auditSigningEnv(env: SigningEnv): AuditReport {
-  const results: PlatformAuditResult[] = [auditMac(env), auditWindows(env), auditLinux(env)]
+/**
+ * Optional callback invoked when CODA_APPLE_DEV_ID is not set. Returning a
+ * non-empty string tells the audit that a Developer ID Application identity
+ * is available from the login keychain — sufficient to treat macOS as
+ * `signed`. Returning `null` preserves the existing "unsigned, missing env"
+ * behavior.
+ */
+export type KeychainProbe = () => string | null
+
+export interface AuditOptions {
+  keychainProbe?: KeychainProbe
+}
+
+export function auditSigningEnv(env: SigningEnv, opts: AuditOptions = {}): AuditReport {
+  const results: PlatformAuditResult[] = [
+    auditMac(env, opts.keychainProbe),
+    auditWindows(env),
+    auditLinux(env),
+  ]
   const requireSigned = env.CODA_REQUIRE_SIGNED === "1"
   const allSigned = results.every((r) => r.status === "signed")
   const exitCode = requireSigned && !allSigned ? 2 : 0
   return { results, requireSigned, allSigned, exitCode }
 }
 
-function auditMac(env: SigningEnv): PlatformAuditResult {
+function auditMac(env: SigningEnv, keychainProbe?: KeychainProbe): PlatformAuditResult {
   const missing: string[] = []
-  if (!env.CODA_APPLE_DEV_ID) missing.push("CODA_APPLE_DEV_ID")
+
+  // env > keychain precedence. If CODA_APPLE_DEV_ID is set, use it. Otherwise,
+  // consult the keychain probe. The probe is optional so pure-env tests stay
+  // deterministic.
+  const devIdFromEnv = !!env.CODA_APPLE_DEV_ID
+  let devIdFromKeychain = false
+  if (!devIdFromEnv && keychainProbe) {
+    const probed = keychainProbe()
+    if (probed && probed.trim().length > 0) {
+      devIdFromKeychain = true
+    }
+  }
+
+  if (!devIdFromEnv && !devIdFromKeychain) missing.push("CODA_APPLE_DEV_ID")
   if (!env.CODA_APPLE_PROVIDER) missing.push("CODA_APPLE_PROVIDER")
   // Notarization creds are separate — they're needed for the post-bundle
   // staple step, not signing itself. If any of the notarization triplet is
@@ -66,9 +96,12 @@ function auditMac(env: SigningEnv): PlatformAuditResult {
   }
 
   if (missing.length === 0) {
-    return { platform: "macos", status: "signed", missing: [] }
+    const reason = devIdFromKeychain
+      ? "Using Developer ID Application from login keychain (from keychain)."
+      : undefined
+    return { platform: "macos", status: "signed", missing: [], reason }
   }
-  const coreSigningMissing = !env.CODA_APPLE_DEV_ID || !env.CODA_APPLE_PROVIDER
+  const coreSigningMissing = (!devIdFromEnv && !devIdFromKeychain) || !env.CODA_APPLE_PROVIDER
   return {
     platform: "macos",
     status: coreSigningMissing ? "unsigned" : "signed",
@@ -128,9 +161,29 @@ export function formatReport(report: AuditReport): string {
   return lines.join("\n")
 }
 
+/** Default keychain probe — shells out to `security find-identity`. */
+export function defaultKeychainProbe(): string | null {
+  try {
+    const { spawnSync } = require("node:child_process") as typeof import("node:child_process")
+    const r = spawnSync("security", ["find-identity", "-v", "-p", "codesigning"], {
+      encoding: "utf8",
+    })
+    if (r.status !== 0) return null
+    for (const line of (r.stdout ?? "").split("\n")) {
+      const m = line.match(/"(Developer ID Application:[^"]+)"/)
+      if (m) return m[1]
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 // CLI entrypoint
 if (import.meta.main) {
-  const report = auditSigningEnv(process.env as unknown as SigningEnv)
+  const report = auditSigningEnv(process.env as unknown as SigningEnv, {
+    keychainProbe: defaultKeychainProbe,
+  })
   console.log(formatReport(report))
   process.exit(report.exitCode)
 }
