@@ -255,6 +255,25 @@ function seedEntries(): Tasks.TaskEntry[] {
     mk("T11", "T", "Checkpoint git private refs", `${core}/checkpoint`, []),
     mk("T16", "T", "MCP tool dispatch", `${core}/mcp`, []),
     mk("T19", "T", "Virtual scroll window calc", `${core}/virtual`, []),
+    mk("C1", "C", "PTY lifecycle manager + MockPtyDriver", `${core}/pty-lifecycle`, ["A2"]),
+    mk("C3", "C", "Agent resume command builder", `${core}/agent`, []),
+    mk("D1", "D", "File tree flatten + filter", `${core}/file-tree`, ["T19"]),
+    mk("D2", "D", "Editor buffer + edit semantics", `${core}/editor/buffer.test.ts`, []),
+    mk("D3", "D", "Jump-to-diff-hunk", `${core}/editor/jump.test.ts`, ["E1"]),
+    mk("D4", "D", "Editor theme catalog", `${core}/editor/themes.test.ts`, []),
+    mk("D6", "D", "Editor feature toggles", `${core}/editor/features.test.ts`, []),
+    mk("D8", "D", "Save-file MCP tool", `${core}/mcp/save-file.test.ts`, ["T16"]),
+    mk("X1", "X", "Code-signing audit", `${core}/signing`, []),
+    mk("0.5", "0", "Resume state machine", `${core}/resume`, ["0.1"]),
+    mk("J5", "J", "Watchdog-of-watchdog supervisor", `${core}/watchdog/supervisor.test.ts`, ["J1"]),
+    mk("V2", "V", "Axe violation grouping + gate", `${core}/a11y/axe.test.ts`, []),
+    mk(
+      "P3",
+      "P",
+      "Project actions (rename/remove/reveal/clone)",
+      `${core}/project/actions.test.ts`,
+      ["A1"],
+    ),
   ]
 }
 
