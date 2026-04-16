@@ -10,6 +10,7 @@ export const TaskEntry = z.object({
   status: TaskStatus.default("pending"),
   dependencies: z.array(z.string()).default([]),
   startedAt: z.number().nullable().default(null),
+  startedAtSha: z.string().nullable().default(null),
   completedAt: z.number().nullable().default(null),
   attempts: z.number().int().nonnegative().default(0),
   lastError: z.string().nullable().default(null),
