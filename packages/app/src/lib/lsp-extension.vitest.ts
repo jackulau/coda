@@ -200,12 +200,14 @@ describe("createLspExtension", () => {
     vi.advanceTimersByTime(150)
     const changes = client.notifications.filter((n) => n.method === "textDocument/didChange")
     expect(changes).toHaveLength(1)
-    const p = changes[0].params as {
+    const first = changes[0]
+    if (!first) throw new Error("no didChange")
+    const p = first.params as {
       textDocument: { version: number }
       contentChanges: Array<{ text: string }>
     }
     expect(p.textDocument.version).toBe(4)
-    expect(p.contentChanges[0].text).toBe("abc")
+    expect(p.contentChanges[0]?.text).toBe("abc")
   })
 
   it("routes textDocument/publishDiagnostics → editor.showDiagnostics", () => {
@@ -218,7 +220,7 @@ describe("createLspExtension", () => {
       diagnostics: [{ range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } }, message: "x" }],
     })
     expect(editor.diagnostics).toHaveLength(1)
-    expect(editor.diagnostics[0][0].message).toBe("x")
+    expect(editor.diagnostics[0]?.[0]?.message).toBe("x")
   })
 
   it("ignores diagnostics for a different uri", () => {
@@ -242,7 +244,7 @@ describe("createLspExtension", () => {
     const req = client2.requests.find((r) => r.method === "textDocument/completion")
     expect(req).toBeTruthy()
     expect(editor.completions).toHaveLength(1)
-    expect(editor.completions[0].items.map((i) => i.label)).toEqual(["foo", "bar"])
+    expect(editor.completions[0]?.items.map((i) => i.label)).toEqual(["foo", "bar"])
   })
 
   it("handles completion error by showing empty array", async () => {
@@ -253,7 +255,7 @@ describe("createLspExtension", () => {
     editor.emitCompletionRequest({ line: 1, character: 2 })
     await vi.runAllTimersAsync()
     expect(editor.completions).toHaveLength(1)
-    expect(editor.completions[0].items).toEqual([])
+    expect(editor.completions[0]?.items).toEqual([])
   })
 
   it("sends hover request and shows info", async () => {
@@ -264,7 +266,7 @@ describe("createLspExtension", () => {
     editor.emitHover({ line: 1, character: 2 })
     await vi.runAllTimersAsync()
     expect(editor.hovers).toHaveLength(1)
-    expect(editor.hovers[0].info?.contents).toBe("docstring")
+    expect(editor.hovers[0]?.info?.contents).toBe("docstring")
   })
 
   it("sends definition request and navigates", async () => {
@@ -278,7 +280,7 @@ describe("createLspExtension", () => {
     editor.emitDefinitionRequest({ line: 1, character: 2 })
     await vi.runAllTimersAsync()
     expect(editor.definitions).toHaveLength(1)
-    expect(editor.definitions[0][0].uri).toBe("file:///other.ts")
+    expect(editor.definitions[0]?.[0]?.uri).toBe("file:///other.ts")
   })
 
   it("skips hover when server lacks hoverProvider capability", async () => {
@@ -346,7 +348,9 @@ describe("createLspExtension", () => {
     ext.attach(b)
     const closes = client.notifications.filter((n) => n.method === "textDocument/didClose")
     expect(closes).toHaveLength(1)
-    expect((closes[0].params as { textDocument: { uri: string } }).textDocument.uri).toBe(
+    const close = closes[0]
+    if (!close) throw new Error("no didClose")
+    expect((close.params as { textDocument: { uri: string } }).textDocument.uri).toBe(
       "file:///a.ts",
     )
     expect(ext.editor?.uri).toBe("file:///b.ts")

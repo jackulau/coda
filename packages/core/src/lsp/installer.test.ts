@@ -336,9 +336,11 @@ describe("installServer — package manager strategies", () => {
       [TS_ENTRY],
     )
     expect(result.strategy).toBe("npm")
-    expect(env.commands[0].command).toBe("npm")
-    expect(env.commands[0].args).toEqual(["install", "-g", "typescript-language-server"])
-    expect(env.commands[0].extraEnv?.npm_config_prefix).toBe("/r/typescript")
+    const cmd = env.commands[0]
+    if (!cmd) throw new Error("no command recorded")
+    expect(cmd.command).toBe("npm")
+    expect(cmd.args).toEqual(["install", "-g", "typescript-language-server"])
+    expect(cmd.extraEnv?.npm_config_prefix).toBe("/r/typescript")
   })
 
   test("cargo strategy runs cargo install with CARGO_INSTALL_ROOT", async () => {

@@ -91,6 +91,14 @@ export interface LspExtensionOptions {
   clearTimeoutFn?: (h: unknown) => void
 }
 
+// Default timer adapters that accept `unknown` handles. Wrapping the built-ins
+// hides their overloaded signatures behind an opaque contract so consumers
+// (and tsc) don't have to reconcile Node's Timeout vs DOM's number.
+const defaultSetTimeout = (fn: () => void, ms: number): unknown => setTimeout(fn, ms)
+const defaultClearTimeout = (h: unknown): void => {
+  if (h !== null && h !== undefined) clearTimeout(h as Parameters<typeof clearTimeout>[0])
+}
+
 /**
  * Shape returned by `createLspExtension`. Deliberately structural so the same
  * object satisfies CodeMirror 6's `Extension` type without coupling to its
@@ -109,8 +117,8 @@ export function createLspExtension(opts: LspExtensionOptions): LspExtension {
   const {
     client,
     changeDebounceMs = 150,
-    setTimeoutFn = setTimeout,
-    clearTimeoutFn = clearTimeout,
+    setTimeoutFn = defaultSetTimeout,
+    clearTimeoutFn = defaultClearTimeout,
   } = opts
 
   let editor: EditorHandle | null = null
