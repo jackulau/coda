@@ -247,6 +247,14 @@ function seedEntries(): Tasks.TaskEntry[] {
     mk("V3", "V", "Reduced-motion policy", `${core}/a11y`, []),
     mk("U1", "U", "Menu bar model + disabled evaluator", `${core}/menu`, []),
     mk("U4", "U", "Notification queue (dedup + capacity)", `${core}/notify`, []),
+    mk("E2", "E", "Compare two PRs delta", `${core}/github/compare.test.ts`, ["E1"]),
+    mk("P1", "P", "Onboarding wizard state machine", `${core}/onboarding`, []),
+    mk("P2", "P", "Settings persistence + v1→v2 migration", `${core}/settings`, []),
+    mk("V1", "V", "Visual signature store", `${core}/visual`, []),
+    mk("Y3", "Y", "Crash dump schema + index", `${core}/crash`, ["Y1"]),
+    mk("T11", "T", "Checkpoint git private refs", `${core}/checkpoint`, []),
+    mk("T16", "T", "MCP tool dispatch", `${core}/mcp`, []),
+    mk("T19", "T", "Virtual scroll window calc", `${core}/virtual`, []),
   ]
 }
 
