@@ -32,24 +32,20 @@ function winLine(status: PlatformStatus): string {
 
 function lnxLine(status: PlatformStatus): string {
   if (status === "skipped") return `- ${LNX_LABEL}: skipped`
-  if (status === "unsigned") return `- ${LNX_LABEL}: **unsigned** AppImage (deb/rpm are never bundle-signed)`
+  if (status === "unsigned")
+    return `- ${LNX_LABEL}: **unsigned** AppImage (deb/rpm are never bundle-signed)`
   return `- ${LNX_LABEL}: AppImage GPG-signed (deb/rpm are never bundle-signed)`
 }
 
 function macGuidance(status: PlatformStatus, notarized: boolean): string | null {
   if (status === "unsigned") {
     return [
-      `**${MAC_LABEL}** — macOS Gatekeeper will refuse to open the app on first launch ` +
-        `("cannot be opened because it is from an unidentified developer"). Right-click ` +
-        `the app → Open → Open anyway, or clear the quarantine attribute with ` +
-        "`xattr -dr com.apple.quarantine Coda.app`.",
+      `**${MAC_LABEL}** — macOS Gatekeeper will refuse to open the app on first launch ("cannot be opened because it is from an unidentified developer"). Right-click the app → Open → Open anyway, or clear the quarantine attribute with \`xattr -dr com.apple.quarantine Coda.app\`.`,
     ].join("\n")
   }
   if (status === "signed" && !notarized) {
     return [
-      `**${MAC_LABEL}** — the build is signed but not notarized. Gatekeeper still prompts ` +
-        `on first launch ("Coda is an app downloaded from the Internet. Are you sure you ` +
-        `want to open it?"). Click Open. Subsequent launches are quiet.`,
+      `**${MAC_LABEL}** — the build is signed but not notarized. Gatekeeper still prompts on first launch ("Coda is an app downloaded from the Internet. Are you sure you want to open it?"). Click Open. Subsequent launches are quiet.`,
     ].join("\n")
   }
   return null
@@ -58,19 +54,14 @@ function macGuidance(status: PlatformStatus, notarized: boolean): string | null 
 function winGuidance(status: PlatformStatus): string | null {
   if (status !== "unsigned") return null
   return [
-    `**${WIN_LABEL}** — Windows SmartScreen will show "Windows protected your PC" on ` +
-      `first launch. Click **More info → Run anyway**. SmartScreen trust builds over time ` +
-      `as more users run the binary; a code-signing certificate removes the prompt.`,
+    `**${WIN_LABEL}** — Windows SmartScreen will show "Windows protected your PC" on first launch. Click **More info → Run anyway**. SmartScreen trust builds over time as more users run the binary; a code-signing certificate removes the prompt.`,
   ].join("\n")
 }
 
 function lnxGuidance(status: PlatformStatus): string | null {
   if (status !== "unsigned") return null
   return [
-    `**${LNX_LABEL}** — the AppImage is distributed without a detached signature, so ` +
-      `\`gpg --verify Coda.AppImage.asc\` is unverifiable. deb and rpm bundles are not ` +
-      `bundle-signed by convention — install via a signed apt/dnf repository to get ` +
-      `authenticity + integrity.`,
+    `**${LNX_LABEL}** — the AppImage is distributed without a detached signature, so \`gpg --verify Coda.AppImage.asc\` is unverifiable. deb and rpm bundles are not bundle-signed by convention — install via a signed apt/dnf repository to get authenticity + integrity.`,
   ].join("\n")
 }
 

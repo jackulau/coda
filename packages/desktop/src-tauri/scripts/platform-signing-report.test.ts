@@ -4,7 +4,7 @@
 // both human-readable AND stable for changelog tooling.
 
 import { describe, expect, test } from "bun:test"
-import { generateReport, type PlatformStatus, type SigningInput } from "./platform-signing-report"
+import { type PlatformStatus, type SigningInput, generateReport } from "./platform-signing-report"
 
 const SIGNED: PlatformStatus = "signed"
 const UNSIGNED: PlatformStatus = "unsigned"
