@@ -1,8 +1,12 @@
+use std::path::PathBuf;
 use std::sync::Mutex;
 
+pub mod fs_commands;
 pub mod lsp_spawn;
+pub mod path_guard;
 pub mod sidecar_token;
 pub mod url_guard;
+pub mod workspace_registry;
 
 #[cfg(test)]
 mod lsp_spawn_test;
@@ -16,6 +20,12 @@ pub use url_guard::is_local_url;
 #[derive(Default)]
 pub struct AppState {
     pub session_token: Mutex<Option<SessionToken>>,
+    /// Canonical paths that `fs_commands` will accept. Populated at
+    /// startup from [`workspace_registry::load_workspaces`] and mutated
+    /// by the `register_workspace` / `unregister_workspace` commands.
+    pub allowed_roots: Mutex<Vec<PathBuf>>,
+    /// In-memory cache of persisted workspaces.
+    pub workspaces: Mutex<Option<workspace_registry::WorkspacesFile>>,
 }
 
 impl AppState {
@@ -52,8 +62,7 @@ mod plugin_tests {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("src")
             .join("main.rs");
-        let src =
-            std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read main.rs: {e}"));
+        let src = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read main.rs: {e}"));
         for expected in [
             "tauri_plugin_fs::init()",
             "tauri_plugin_dialog::init()",
