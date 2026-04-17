@@ -37,6 +37,22 @@ bun run dev          # SolidJS app in browser
 bun run tauri dev    # Full desktop shell (requires Rust toolchain)
 ```
 
+### macOS arm64 Node requirement
+
+The Tauri CLI binds to a platform-specific native binary at install time. On Apple
+Silicon Macs, make sure Node is running as **arm64** when invoking anything that
+shells into `tauri` — an x86_64 (Rosetta) Node will fail to resolve the native
+`@tauri-apps/cli-darwin-arm64` binding.
+
+If your default Node is x64, prefix Tauri-related commands with a PATH that points
+at an arm64 Node (e.g. installed via `nvm install 22`):
+
+```bash
+PATH="$HOME/.nvm/versions/node/v22.19.0/bin:$PATH" bun run tauri dev
+```
+
+Check with `node -e "console.log(process.arch)"` — it must print `arm64`.
+
 ## Targets
 
 - Cold start ≤ 1.5 s (local), ≤ 3 s (CI)
