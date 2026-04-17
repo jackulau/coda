@@ -1,6 +1,7 @@
 import { type Component, ErrorBoundary, createSignal, onCleanup, onMount } from "solid-js"
 import { CommandPalette, type PaletteCommand } from "./components/command-palette"
 import { CrashBanner } from "./components/crash-banner"
+import { EditorPanelProvider } from "./components/editor/editor-panel"
 import { LayoutProvider } from "./context/layout"
 import { WorkspaceProvider, useWorkspaces } from "./context/workspace"
 import { CenterPanel } from "./pages/layout/center-panel"
@@ -83,7 +84,9 @@ export const App: Component = () => {
   return (
     <LayoutProvider>
       <WorkspaceProvider>
-        <Shell />
+        <EditorPanelProvider>
+          <Shell />
+        </EditorPanelProvider>
       </WorkspaceProvider>
     </LayoutProvider>
   )
