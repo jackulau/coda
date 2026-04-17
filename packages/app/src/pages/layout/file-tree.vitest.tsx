@@ -174,6 +174,31 @@ describe("FileTreeLive (T7)", () => {
     })
   })
 
+  test("loading_shows_skeleton_rows", async () => {
+    let resolveList!: (v: DirEntry[]) => void
+    const listPromise = new Promise<DirEntry[]>((r) => {
+      resolveList = r
+    })
+    const list = vi.fn().mockImplementation(async () => listPromise)
+    const { container } = render(() => <FileTreeLive rootPath="/w" listDirectory={list} />)
+    await waitFor(() =>
+      expect(container.querySelector("[data-testid='file-tree-skeleton']")).toBeTruthy(),
+    )
+    const skeletonRows = container.querySelectorAll(".coda-skeleton-row")
+    expect(skeletonRows.length).toBe(3)
+    resolveList([])
+  })
+
+  test("empty_dir_shows_empty_message", async () => {
+    const list = makeList({ "/w": [] })
+    const { container } = render(() => <FileTreeLive rootPath="/w" listDirectory={list} />)
+    await waitFor(() =>
+      expect(container.querySelector("[data-testid='file-tree-row-/w']")).toBeTruthy(),
+    )
+    // our code synthesizes an "Empty directory" row when the entries array is empty
+    expect(container.textContent).toContain("Empty directory")
+  })
+
   test("file_click_fires_onOpenFile", async () => {
     const list = makeList({
       "/w": [{ name: "a.txt", path: "/w/a.txt", kind: "file" }],

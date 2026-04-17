@@ -321,11 +321,22 @@ export const FileTreeLive: Component<LiveProps> = (props) => {
         </button>
       </div>
       <div style={{ flex: "1 1 auto", "overflow-y": "auto" }}>
-        <For each={rows()}>{(row, idx) => renderRow(row, idx())}</For>
-        <Show when={rows().length === 0}>
-          <div data-testid="file-tree-empty" style={{ padding: "8px" }}>
-            No files
-          </div>
+        <Show
+          when={cache().get(props.rootPath)?.kind !== "loading"}
+          fallback={
+            <div data-testid="file-tree-skeleton">
+              <div class="coda-skeleton-row" style={{ width: "70%" }} />
+              <div class="coda-skeleton-row" style={{ width: "85%" }} />
+              <div class="coda-skeleton-row" style={{ width: "60%" }} />
+            </div>
+          }
+        >
+          <For each={rows()}>{(row, idx) => renderRow(row, idx())}</For>
+          <Show when={rows().length === 0}>
+            <div data-testid="file-tree-empty" style={{ padding: "8px" }}>
+              No files
+            </div>
+          </Show>
         </Show>
       </div>
     </div>
