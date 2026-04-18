@@ -97,4 +97,26 @@ describe("BufferManager (T8, logic)", () => {
     await mgr.open("/a.ts")
     await expect(mgr.save("/a.ts")).rejects.toThrow()
   })
+
+  test("rapid_saves_serialize_and_deduplicate", async () => {
+    // Two quick Cmd+S presses in a row should result in one write,
+    // not two racing writes with an unknown landing order.
+    let pending!: () => void
+    let calls = 0
+    const writer = vi.fn().mockImplementation(async () => {
+      calls += 1
+      await new Promise<void>((r) => {
+        pending = r
+      })
+    })
+    const mgr = withRoot(() => createBufferManager({ reader: async () => "orig", writer }))
+    await mgr.open("/a.ts")
+    mgr.update("/a.ts", "v1")
+    const first = mgr.save("/a.ts")
+    const second = mgr.save("/a.ts")
+    expect(calls).toBe(1)
+    pending()
+    await Promise.all([first, second])
+    expect(calls).toBe(1)
+  })
 })

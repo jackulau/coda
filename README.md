@@ -29,29 +29,30 @@ Foundation scaffold. Real implementation lives behind the spec phases (A → X).
 
 ## Dev
 
-```bash
-bun install
-bun run typecheck
-bun run lint
-bun run dev          # SolidJS app in browser
-bun run tauri dev    # Full desktop shell (requires Rust toolchain)
-```
-
-### macOS arm64 Node requirement
-
-The Tauri CLI binds to a platform-specific native binary at install time. On Apple
-Silicon Macs, make sure Node is running as **arm64** when invoking anything that
-shells into `tauri` — an x86_64 (Rosetta) Node will fail to resolve the native
-`@tauri-apps/cli-darwin-arm64` binding.
-
-If your default Node is x64, prefix Tauri-related commands with a PATH that points
-at an arm64 Node (e.g. installed via `nvm install 22`):
+**Apple Silicon note — check this first.** The Tauri CLI loads a native
+`@tauri-apps/cli-darwin-arm64` binding at install time. If your Node was installed
+as x86_64 (common with older `nvm`), the `tauri` command crashes before it prints
+anything useful. Confirm with `node -e "console.log(process.arch)"` — it must print
+`arm64`. If it prints `x64`, install an arm64 Node (`nvm install 22`) and run Tauri
+commands under that PATH, e.g.:
 
 ```bash
 PATH="$HOME/.nvm/versions/node/v22.19.0/bin:$PATH" bun run tauri dev
 ```
 
-Check with `node -e "console.log(process.arch)"` — it must print `arm64`.
+Once Node is arm64:
+
+```bash
+bun install
+bun run tauri dev    # Full desktop shell (arm64 Node + Rust toolchain)
+
+# Or, for fast UI-only iteration (no Rust rebuilds):
+bun run dev          # SolidJS app in browser at http://127.0.0.1:1420
+
+bun run typecheck
+bun run lint
+bun run test         # core + ui + app (bun:test + vitest)
+```
 
 ## Targets
 

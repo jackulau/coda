@@ -89,14 +89,32 @@ export function createBufferManager(opts: BufferManagerOptions = {}): BufferMana
     )
   }
 
+  // Per-path in-flight save promise. Rapid Cmd+S without this would
+  // race: two writes of the same buffer could land out-of-order on
+  // disk. Here we serialize saves per path — the second call chains
+  // after the first resolves and re-reads the current buffer content
+  // so the user ends up with the latest version saved, exactly once.
+  const inFlight = new Map<string, Promise<void>>()
+
   async function save(path: string): Promise<void> {
-    const b = find(path)
-    if (!b) throw new Error(`no buffer for ${path}`)
+    const existing = inFlight.get(path)
+    if (existing) return existing
     if (!opts.writer) throw new Error("buffer manager has no writer configured")
-    await opts.writer(path, b.content)
-    setBuffers((xs) =>
-      xs.map((x) => (x.path === path ? { ...x, original: x.content, dirty: false } : x)),
-    )
+
+    const doSave = async (): Promise<void> => {
+      const b = find(path)
+      if (!b) throw new Error(`no buffer for ${path}`)
+      const snapshot = b.content
+      await opts.writer?.(path, snapshot)
+      setBuffers((xs) =>
+        xs.map((x) =>
+          x.path === path ? { ...x, original: snapshot, dirty: x.content !== snapshot } : x,
+        ),
+      )
+    }
+    const p = doSave().finally(() => inFlight.delete(path))
+    inFlight.set(path, p)
+    return p
   }
 
   function __setContent(path: string, original: string, content: string): void {

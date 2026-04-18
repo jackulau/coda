@@ -57,13 +57,40 @@ export const EditorPanel: Component = () => {
             style={{
               flex: "1 1 auto",
               display: "flex",
+              "flex-direction": "column",
               "align-items": "center",
               "justify-content": "center",
+              gap: "10px",
               color: "var(--text-tertiary)",
               "font-size": "12px",
+              padding: "32px",
+              "text-align": "center",
             }}
           >
-            Open a file from the tree to begin editing.
+            <div
+              style={{
+                color: "var(--text-secondary)",
+                "font-size": "13px",
+                "font-weight": 500,
+              }}
+            >
+              No file open
+            </div>
+            <div style={{ "max-width": "320px", "line-height": 1.55 }}>
+              Pick a file from the tree on the left, or press{" "}
+              <kbd
+                style={{
+                  padding: "1px 5px",
+                  "background-color": "var(--bg-2)",
+                  "border-radius": "3px",
+                  "font-family": "var(--font-mono)",
+                  "font-size": "11px",
+                }}
+              >
+                ⌘P
+              </kbd>{" "}
+              to search commands.
+            </div>
           </div>
         }
       >
