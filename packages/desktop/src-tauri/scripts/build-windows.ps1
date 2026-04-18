@@ -38,9 +38,14 @@ try {
     Write-Host "Signed: $signed"
     Write-Host "====================="
 
+    # We ship NSIS only, not MSI. Tauri's MSI bundler rejects non-numeric
+    # pre-release identifiers (it requires "-<0..65535>"), which trips up
+    # versions like "2.0.0-alpha.0". NSIS has no such restriction and also
+    # installs without elevation when `installMode: currentUser`, which is
+    # what `tauri.conf.json` requests.
     bun --cwd packages/desktop tauri build `
         --target x86_64-pc-windows-msvc `
-        --bundles msi,nsis
+        --bundles nsis
     if ($LASTEXITCODE -ne 0) {
         Write-Error "tauri build exited $LASTEXITCODE"
         exit $LASTEXITCODE

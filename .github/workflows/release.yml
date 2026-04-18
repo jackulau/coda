@@ -190,7 +190,16 @@ jobs:
         if: matrix.platform == 'macos'
         run: |
           set -euo pipefail
-          BIN="${{ steps.mac-locate.outputs.app }}/Contents/MacOS/Coda"
+          APP='${{ steps.mac-locate.outputs.app }}'
+          # The binary inside Contents/MacOS/ takes its name from Cargo.toml's
+          # [[bin]] (coda-desktop), not productName. Glob so future renames
+          # surface as a clear failure instead of a silent filename mismatch.
+          BIN="$(find "$APP/Contents/MacOS" -maxdepth 1 -type f | head -1)"
+          if [[ -z "$BIN" || ! -f "$BIN" ]]; then
+            echo "no binary found in $APP/Contents/MacOS" >&2
+            ls -la "$APP/Contents/MacOS" >&2 || true
+            exit 1
+          fi
           if ! file "$BIN" | grep -q 'Mach-O universal'; then
             echo "binary is not universal: $(file "$BIN")" >&2
             exit 1
