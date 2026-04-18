@@ -205,19 +205,32 @@ export const FileTreeLive: Component<LiveProps> = (props) => {
     return out
   })
 
+  function focusRowByKey(key: string): void {
+    setFocusedKey(key)
+    // Imperatively move DOM focus in the next microtask so the newly
+    // tab-reachable row also receives the visible focus ring; without
+    // this the data-focused attribute updates but focus stays on the
+    // previous row, so screen readers and the focus outline disagree.
+    queueMicrotask(() => {
+      const sel = `[data-testid="file-tree-row-${CSS.escape(key)}"]`
+      const el = document.querySelector(sel) as HTMLElement | null
+      el?.focus()
+    })
+  }
+
   function onRowKeyDown(e: KeyboardEvent, row: FlatRow, idx: number): void {
     const all = rows()
     switch (e.key) {
       case "ArrowDown": {
         e.preventDefault()
         const nxt = all[idx + 1]
-        if (nxt) setFocusedKey(nxt.key)
+        if (nxt) focusRowByKey(nxt.key)
         break
       }
       case "ArrowUp": {
         e.preventDefault()
         const prv = all[idx - 1]
-        if (prv) setFocusedKey(prv.key)
+        if (prv) focusRowByKey(prv.key)
         break
       }
       case "ArrowRight": {
@@ -254,7 +267,7 @@ export const FileTreeLive: Component<LiveProps> = (props) => {
         data-focused={focusedKey() === row.key ? "true" : "false"}
         data-loading={isLoad ? "true" : undefined}
         data-error={isErr ? "true" : undefined}
-        tabIndex={focusedKey() === row.key ? 0 : -1}
+        tabIndex={focusedKey() === row.key || (focusedKey() === null && idx === 0) ? 0 : -1}
         onFocus={() => setFocusedKey(row.key)}
         onClick={() => {
           if (row.state) return

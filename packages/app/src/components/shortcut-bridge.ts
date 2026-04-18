@@ -117,7 +117,34 @@ export function createShortcutBridge(opts: ShortcutBridgeOptions = {}): Shortcut
     return parts.join("+")
   }
 
+  /**
+   * Return true if the event originated inside a text-entry control that
+   * should handle its own keystrokes. Prevents a global Cmd+S from
+   * firing "save file" while the user is typing in a sidebar rename
+   * input, a command-palette search field, etc. CodeMirror has its own
+   * keymap that will grab Mod+S at the editor level before the window
+   * listener sees it, so the editor itself still saves as expected.
+   */
+  function shouldSkipForTarget(e: KeyboardEvent): boolean {
+    const target = e.target as HTMLElement | null
+    if (!target) return false
+    const tag = target.tagName
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true
+    // Walk up for contenteditable. Check the .contentEditable property
+    // first (most browsers) and fall back to the attribute (happy-dom).
+    let el: HTMLElement | null = target
+    while (el) {
+      const prop = (el as HTMLElement & { contentEditable?: string }).contentEditable
+      if (prop === "true" || prop === "plaintext-only") return true
+      const attr = el.getAttribute?.("contenteditable")
+      if (attr === "" || attr === "true" || attr === "plaintext-only") return true
+      el = el.parentElement
+    }
+    return false
+  }
+
   function dispatch(e: KeyboardEvent, handlers: HandlerMap): boolean {
+    if (shouldSkipForTarget(e)) return false
     const chord = eventToChord(e)
     if (!chord) return false
     const id = registry.resolve(chord, "global") as CommandId | null
@@ -129,12 +156,22 @@ export function createShortcutBridge(opts: ShortcutBridgeOptions = {}): Shortcut
     return true
   }
 
+  // Guard against double-install (e.g. HMR or an accidental re-mount):
+  // only one window-level listener is ever active per bridge instance.
+  let activeCleanup: (() => void) | null = null
+
   function install(getHandlers: () => HandlerMap): () => void {
+    if (activeCleanup) return activeCleanup
     const listener = (e: KeyboardEvent) => {
       dispatch(e, getHandlers())
     }
     window.addEventListener("keydown", listener)
-    return () => window.removeEventListener("keydown", listener)
+    const cleanup = () => {
+      window.removeEventListener("keydown", listener)
+      if (activeCleanup === cleanup) activeCleanup = null
+    }
+    activeCleanup = cleanup
+    return cleanup
   }
 
   return {

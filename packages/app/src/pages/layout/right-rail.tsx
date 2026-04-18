@@ -1,6 +1,13 @@
 import type { Component } from "solid-js"
 import { useLayout } from "../../context/layout"
 
+/**
+ * Right rail. A dedicated PR review surface lives here once the GitHub
+ * integration ships (tracked in a separate spec). Until then the rail
+ * shows a calm empty state — no disabled accent-colored buttons, no
+ * leaked phase label. This matches the "no dead-end buttons" rule from
+ * the polish spec.
+ */
 export const RightRail: Component = () => {
   const layout = useLayout()
   return (
@@ -8,8 +15,8 @@ export const RightRail: Component = () => {
       data-testid="right-rail"
       style={{
         width: `${layout.state().rightRailWidth}px`,
-        "min-width": "300px",
-        "max-width": "560px",
+        "min-width": "240px",
+        "max-width": "480px",
         "background-color": "var(--bg-1)",
         "border-left": "1px solid var(--border-subtle)",
         display: "flex",
@@ -19,80 +26,31 @@ export const RightRail: Component = () => {
     >
       <div
         style={{
-          padding: "12px",
-          display: "flex",
-          "align-items": "center",
-          gap: "8px",
+          padding: "10px 12px",
           "border-bottom": "1px solid var(--border-subtle)",
+          "font-size": "11px",
+          color: "var(--text-tertiary)",
+          "text-transform": "uppercase",
+          "letter-spacing": "0.05em",
         }}
       >
-        <span style={{ color: "var(--text-primary)", "font-weight": 500, "font-size": "13px" }}>
-          Review PR #—
-        </span>
-        <span
-          style={{
-            "margin-left": "auto",
-            padding: "2px 8px",
-            "background-color": "var(--accent-500)",
-            color: "var(--bg-0)",
-            "border-radius": "4px",
-            "font-size": "10px",
-            "font-weight": 700,
-            "text-transform": "uppercase",
-          }}
-        >
-          OPEN
-        </span>
+        Inspector
       </div>
       <div
+        data-testid="right-rail-empty"
         style={{
           flex: "1 1 auto",
-          padding: "16px",
+          display: "flex",
+          "align-items": "center",
+          "justify-content": "center",
+          padding: "24px 16px",
+          "text-align": "center",
           color: "var(--text-tertiary)",
           "font-size": "12px",
+          "line-height": 1.5,
         }}
       >
-        Open a PR to begin review. (Phase E — Octokit client + diff viewer.)
-      </div>
-      <div
-        style={{
-          padding: "8px",
-          "border-top": "1px solid var(--border-subtle)",
-          display: "flex",
-          gap: "8px",
-        }}
-      >
-        <button
-          type="button"
-          disabled
-          style={{
-            flex: "1 1 auto",
-            height: "32px",
-            "background-color": "var(--diff-add)",
-            color: "var(--bg-0)",
-            "border-radius": "6px",
-            "font-weight": 600,
-            opacity: 0.5,
-          }}
-        >
-          Approve
-        </button>
-        <button
-          type="button"
-          disabled
-          style={{
-            flex: "1 1 auto",
-            height: "32px",
-            "background-color": "var(--bg-2)",
-            color: "var(--text-primary)",
-            border: "1px solid var(--border-default)",
-            "border-radius": "6px",
-            "font-weight": 600,
-            opacity: 0.5,
-          }}
-        >
-          Comment
-        </button>
+        Select something to inspect it here.
       </div>
     </aside>
   )
