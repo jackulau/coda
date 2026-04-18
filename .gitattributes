@@ -1,0 +1,19 @@
+# Force LF line endings across all text files.
+# Without this, Windows runners (and Windows devs) end up with CRLF on checkout,
+# which biome's format-check reports as violations on `ci.yml` → Windows.
+
+* text=auto eol=lf
+
+# Binary files — don't touch.
+*.png binary
+*.ico binary
+*.icns binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.dmg binary
+*.msi binary
+*.exe binary
+*.deb binary
+*.rpm binary
+*.AppImage binary
