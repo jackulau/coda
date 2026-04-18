@@ -70,7 +70,16 @@ export const Sidebar: Component = () => {
             >
               <Show
                 when={!ws.isLoading()}
-                fallback={<div data-testid="sidebar-loading">Loading workspaces…</div>}
+                fallback={
+                  <div
+                    data-testid="sidebar-loading"
+                    style={{ display: "flex", "flex-direction": "column", gap: "6px" }}
+                  >
+                    <div class="coda-skeleton-row" style={{ width: "70%" }} />
+                    <div class="coda-skeleton-row" style={{ width: "85%" }} />
+                    <div class="coda-skeleton-row" style={{ width: "60%" }} />
+                  </div>
+                }
               >
                 <div>No workspace yet.</div>
                 <button

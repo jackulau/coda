@@ -27,7 +27,7 @@ const ToastStack: Component = () => {
       case "error":
         return "var(--diff-remove)"
       case "warn":
-        return "#c07a1a"
+        return "var(--status-await)"
       case "success":
         return "var(--accent-500)"
       default:
@@ -96,7 +96,7 @@ const ToastStack: Component = () => {
                 cursor: "pointer",
                 "font-size": "12px",
               }}
-              aria-label="Dismiss notification"
+              aria-label={`Dismiss ${t.kind} notification: ${t.message}`}
             >
               ×
             </button>

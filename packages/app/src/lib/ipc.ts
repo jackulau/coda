@@ -62,14 +62,38 @@ export function readTextFile(path: string): Promise<string> {
   return call<string>("read_text_file", { path })
 }
 
-export function writeTextFile(path: string, contents: string): Promise<void> {
-  return call<void>("write_text_file", { path, contents })
+export interface WriteTextFileArgs {
+  path: string
+  contents: string
+}
+
+export function writeTextFile(args: WriteTextFileArgs): Promise<void>
+export function writeTextFile(path: string, contents: string): Promise<void>
+export function writeTextFile(
+  pathOrArgs: string | WriteTextFileArgs,
+  contents?: string,
+): Promise<void> {
+  const args =
+    typeof pathOrArgs === "string" ? { path: pathOrArgs, contents: contents as string } : pathOrArgs
+  return call<void>("write_text_file", args as unknown as Record<string, unknown>)
 }
 
 // --- workspace registry -------------------------------------------------
 
-export function registerWorkspace(rootPath: string, name?: string): Promise<WorkspaceRecord> {
-  return call<WorkspaceRecord>("register_workspace", { rootPath, name })
+export interface RegisterWorkspaceArgs {
+  rootPath: string
+  name?: string
+}
+
+export function registerWorkspace(args: RegisterWorkspaceArgs): Promise<WorkspaceRecord>
+export function registerWorkspace(rootPath: string, name?: string): Promise<WorkspaceRecord>
+export function registerWorkspace(
+  rootPathOrArgs: string | RegisterWorkspaceArgs,
+  name?: string,
+): Promise<WorkspaceRecord> {
+  const args =
+    typeof rootPathOrArgs === "string" ? { rootPath: rootPathOrArgs, name } : rootPathOrArgs
+  return call<WorkspaceRecord>("register_workspace", args as unknown as Record<string, unknown>)
 }
 
 export function unregisterWorkspace(id: string): Promise<void> {

@@ -10,7 +10,10 @@ export interface TabsProps {
 
 function basename(path: string): string {
   const i = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"))
-  return i >= 0 ? path.slice(i + 1) : path
+  const tail = i >= 0 ? path.slice(i + 1) : path
+  // Path ending in "/" (root or trailing slash) would give an empty
+  // string; fall back to the full path so the tab always has a label.
+  return tail || path || "untitled"
 }
 
 export const Tabs: Component<TabsProps> = (props) => {

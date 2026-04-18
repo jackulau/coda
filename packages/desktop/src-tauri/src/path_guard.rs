@@ -21,6 +21,8 @@ pub enum FsError {
     FileTooLarge { size: u64, max: u64 },
     #[error("invalid utf-8 in path")]
     InvalidUtf8,
+    #[error("file is binary (not valid utf-8)")]
+    BinaryFile,
 }
 
 impl From<FsError> for String {

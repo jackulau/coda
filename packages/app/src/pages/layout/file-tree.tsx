@@ -279,9 +279,7 @@ export const FileTreeLive: Component<LiveProps> = (props) => {
           display: "flex",
           "align-items": "center",
           width: "100%",
-          "padding-left": `${row.depth * 12 + 8}px`,
-          padding: "2px 8px",
-          "padding-block": "2px",
+          padding: `2px 8px 2px ${row.depth * 12 + 8}px`,
           "background-color": focusedKey() === row.key ? "var(--bg-2)" : "transparent",
           color: isErr ? "var(--diff-remove)" : "var(--text-primary)",
           "font-size": "12px",
@@ -291,7 +289,20 @@ export const FileTreeLive: Component<LiveProps> = (props) => {
         }}
       >
         <span style={{ width: "12px", "flex-shrink": 0 }}>{chevron}</span>
-        <span style={{ opacity: isLoad ? 0.6 : 1 }}>{row.name}</span>
+        {isLoad ? (
+          <span
+            class="coda-skeleton-row"
+            style={{
+              flex: "1 1 auto",
+              height: "12px",
+              margin: "0",
+              "background-color": "var(--bg-2)",
+              "border-radius": "3px",
+            }}
+          />
+        ) : (
+          <span>{row.name}</span>
+        )}
       </button>
     )
   }

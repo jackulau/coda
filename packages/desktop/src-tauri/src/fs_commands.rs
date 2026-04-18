@@ -151,7 +151,12 @@ pub fn read_text_file(path: String, state: State<'_, AppState>) -> Result<String
         }
         .to_string());
     }
-    fs::read_to_string(&canonical).map_err(|e| FsError::Io(e).to_string())
+    // Read as bytes first so we can surface a clean "this is a binary
+    // file" error instead of the generic Utf8Error that would leak
+    // through `fs::read_to_string` — the UI shows this as a toast and
+    // the typed variant lets it render a specific message.
+    let bytes = fs::read(&canonical).map_err(|e| FsError::Io(e).to_string())?;
+    String::from_utf8(bytes).map_err(|_| FsError::BinaryFile.to_string())
 }
 
 /// Atomically write `contents` to `path`. Writes to a tempfile in the
@@ -305,7 +310,8 @@ mod tests {
             }
             .to_string());
         }
-        fs::read_to_string(&canonical).map_err(|e| FsError::Io(e).to_string())
+        let bytes = fs::read(&canonical).map_err(|e| FsError::Io(e).to_string())?;
+        String::from_utf8(bytes).map_err(|_| FsError::BinaryFile.to_string())
     }
 
     fn write_text_file_inner(path: &str, contents: &str, state: &AppState) -> Result<(), String> {
@@ -507,6 +513,19 @@ mod tests {
             .map(|e| e.file_name().to_string_lossy().into_owned())
             .collect();
         assert_eq!(leftovers, vec!["file.txt".to_string()]);
+    }
+
+    /// Reading a binary file returns a specific `BinaryFile` error
+    /// rather than a cryptic UTF-8 error string.
+    #[test]
+    fn read_text_file_rejects_binary() {
+        let tmp = TempDir::new().unwrap();
+        let bin = tmp.path().join("x.bin");
+        // 0xFF 0xFE are not valid UTF-8 start bytes.
+        fs::write(&bin, [0xFFu8, 0xFE, 0x00, 0x01, 0x02]).unwrap();
+        let state = state_with_root(tmp.path());
+        let err = read_text_file_inner(bin.to_str().unwrap(), &state).unwrap_err();
+        assert!(err.contains("binary"), "got: {err}");
     }
 
     /// `heavy` flag is set for node_modules / .git / target so the UI can

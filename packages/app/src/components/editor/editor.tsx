@@ -102,14 +102,21 @@ export const Editor: Component<EditorProps> = (props) => {
     })
   })
 
-  // Mirror external content changes into the editor.
+  // Mirror external content changes into the editor without
+  // discarding the selection. Dispatching with `selection` preserves
+  // cursor position when the incoming text is identical near the
+  // caret; if the replacement shortens the doc below the caret, CM6
+  // clamps the selection to the new doc end rather than collapsing.
   createEffect(() => {
     const next = props.content
     if (!view) return
     const current = view.state.doc.toString()
     if (current === next) return
+    const anchor = Math.min(view.state.selection.main.anchor, next.length)
+    const head = Math.min(view.state.selection.main.head, next.length)
     view.dispatch({
       changes: { from: 0, to: current.length, insert: next },
+      selection: { anchor, head },
     })
   })
 

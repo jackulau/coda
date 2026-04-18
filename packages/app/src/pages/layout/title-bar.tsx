@@ -39,19 +39,15 @@ export const TitleBar: Component = () => {
       >
         <Show when={project()}>{(p) => <span>{p().name}</span>}</Show>
       </div>
-      <Show when={!isMac}>
-        <div style={{ "margin-left": "auto", display: "flex", gap: "4px", "padding-right": "8px" }}>
-          <button type="button" aria-label="minimize" style={{ width: "28px", height: "28px" }}>
-            ─
-          </button>
-          <button type="button" aria-label="maximize" style={{ width: "28px", height: "28px" }}>
-            ▢
-          </button>
-          <button type="button" aria-label="close" style={{ width: "28px", height: "28px" }}>
-            ×
-          </button>
-        </div>
-      </Show>
+      {/*
+       * Non-mac platforms: the OS-native window decorations (enabled in
+       * tauri.conf.json "decorations": true) already provide min/max/
+       * close. Rendering fake title-bar buttons here duplicates the
+       * chrome with non-functional handlers — the previous buttons had
+       * no onClick wiring and were a visible dead-end per the polish
+       * spec. Re-introduce this block once Tauri's window.current()
+       * minimize/maximize/close calls are wired.
+       */}
     </header>
   )
 }
