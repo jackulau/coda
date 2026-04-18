@@ -75,6 +75,39 @@ mod plugin_tests {
         }
     }
 
+    /// The capability file must NOT grant the built-in tauri-plugin-fs IPC
+    /// surface — our custom path-guarded commands are the only allowed
+    /// filesystem entry point. If `fs:allow-*` ever re-appears, a renderer
+    /// XSS or compromised dep can bypass `path_guard.rs` and read/write any
+    /// path on the user's disk.
+    #[test]
+    fn capability_file_does_not_grant_unscoped_fs_access() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("capabilities")
+            .join("default.json");
+        let raw = std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("read {}: {}", path.display(), e));
+        let json: serde_json::Value = serde_json::from_str(&raw).expect("valid JSON");
+        let perms = json
+            .get("permissions")
+            .and_then(|v| v.as_array())
+            .expect("permissions array");
+        let perm_ids: Vec<&str> = perms.iter().filter_map(|v| v.as_str()).collect();
+        for forbidden in [
+            "fs:default",
+            "fs:allow-read-text-file",
+            "fs:allow-write-text-file",
+            "fs:allow-read-dir",
+            "fs:allow-exists",
+            "fs:allow-mkdir",
+        ] {
+            assert!(
+                !perm_ids.contains(&forbidden),
+                "capability file must NOT grant {forbidden} — use custom commands instead"
+            );
+        }
+    }
+
     /// The capability file must be valid JSON and list the permissions the
     /// frontend depends on. This guards against accidental deletion / typo
     /// in `capabilities/default.json` — if any required permission is
@@ -95,9 +128,6 @@ mod plugin_tests {
         for required in [
             "core:default",
             "dialog:allow-open",
-            "fs:allow-read-text-file",
-            "fs:allow-write-text-file",
-            "fs:allow-read-dir",
             "opener:allow-reveal-item-in-dir",
         ] {
             assert!(

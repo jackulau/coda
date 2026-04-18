@@ -14,6 +14,12 @@ export interface DirEntry {
   path: string
   kind: "file" | "directory"
   size?: number
+  /** True for node_modules / .git / target — heavy trees the UI can
+   *  render collapsed with a load-anyway affordance. */
+  heavy?: boolean
+  /** True on the synthetic last entry when the dir hit MAX_DIR_ENTRIES;
+   *  `name` contains a human "…and N more hidden" string. */
+  truncated?: boolean
 }
 
 export interface WorkspaceRecord {

@@ -16,6 +16,28 @@ use tauri::State;
 /// certainly binaries or logs the user doesn't want loaded into CM6.
 pub const MAX_FILE_BYTES: u64 = 10_000_000;
 
+/// Cap a directory listing at this count. Beyond it we return a
+/// truncated flag so the UI can show "…and 12k more hidden" rather than
+/// freezing while we marshal 100k entries over IPC. 5000 is large
+/// enough that no real source directory hits it, and small enough that
+/// the serialized payload stays under ~1 MB.
+pub const MAX_DIR_ENTRIES: usize = 5_000;
+
+/// Directory names we skip at the child level by default. These are
+/// almost always package / build / VCS trees the user doesn't want to
+/// browse, and are the usual culprits behind "one click freezes the
+/// app" (node_modules has 100k+ entries on a typical project).
+const HEAVY_DIRS: &[&str] = &[
+    "node_modules",
+    ".git",
+    "target",
+    ".next",
+    "dist",
+    "build",
+    ".venv",
+    "__pycache__",
+];
+
 #[derive(Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum EntryKind {
@@ -30,6 +52,15 @@ pub struct DirEntry {
     pub kind: EntryKind,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub size: Option<u64>,
+    /// True for directories in [`HEAVY_DIRS`]: the UI can render the row
+    /// with a "click to load anyway" affordance instead of expanding on
+    /// first click.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub heavy: bool,
+    /// True for the synthetic last entry when the directory held more
+    /// than [`MAX_DIR_ENTRIES`] children. The UI can show "…and N more".
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub truncated: bool,
 }
 
 fn allowed_roots_snapshot(state: &AppState) -> Vec<PathBuf> {
@@ -43,12 +74,16 @@ fn allowed_roots_snapshot(state: &AppState) -> Vec<PathBuf> {
 /// List the direct children of `path`.  Directories are sorted first,
 /// then files, both alphabetically (case-insensitive) within their group
 /// so the tree feels stable across runs.
+///
+/// Capped at [`MAX_DIR_ENTRIES`]; overflow is represented by a single
+/// synthetic trailing entry with `truncated = true`.
 #[tauri::command]
 pub fn list_directory(path: String, state: State<'_, AppState>) -> Result<Vec<DirEntry>, String> {
     let roots = allowed_roots_snapshot(&state);
     let canonical = resolve_safe(std::path::Path::new(&path), &roots)?;
     let rd = fs::read_dir(&canonical).map_err(FsError::from)?;
     let mut entries: Vec<DirEntry> = Vec::new();
+    let mut overflow = 0usize;
     for item in rd {
         let item = item.map_err(FsError::from)?;
         let meta = match item.metadata() {
@@ -64,6 +99,10 @@ pub fn list_directory(path: String, state: State<'_, AppState>) -> Result<Vec<Di
             // skip sockets, fifos, etc
             continue;
         };
+        if entries.len() >= MAX_DIR_ENTRIES {
+            overflow += 1;
+            continue;
+        }
         let name = item.file_name().to_string_lossy().to_string();
         let path_str = item.path().to_string_lossy().to_string();
         let size = if kind == EntryKind::File {
@@ -71,11 +110,14 @@ pub fn list_directory(path: String, state: State<'_, AppState>) -> Result<Vec<Di
         } else {
             None
         };
+        let heavy = kind == EntryKind::Directory && HEAVY_DIRS.contains(&name.as_str());
         entries.push(DirEntry {
             name,
             path: path_str,
             kind,
             size,
+            heavy,
+            truncated: false,
         });
     }
     entries.sort_by(|a, b| match (&a.kind, &b.kind) {
@@ -83,6 +125,16 @@ pub fn list_directory(path: String, state: State<'_, AppState>) -> Result<Vec<Di
         (EntryKind::File, EntryKind::Directory) => std::cmp::Ordering::Greater,
         _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
     });
+    if overflow > 0 {
+        entries.push(DirEntry {
+            name: format!("…and {overflow} more hidden"),
+            path: String::new(),
+            kind: EntryKind::File,
+            size: None,
+            heavy: false,
+            truncated: true,
+        });
+    }
     Ok(entries)
 }
 
@@ -191,6 +243,7 @@ mod tests {
         let canonical = resolve_safe(std::path::Path::new(path), &roots)?;
         let rd = fs::read_dir(&canonical).map_err(FsError::from)?;
         let mut entries: Vec<DirEntry> = Vec::new();
+        let mut overflow = 0usize;
         for item in rd {
             let item = item.map_err(FsError::from)?;
             let meta = match item.metadata() {
@@ -204,7 +257,12 @@ mod tests {
             } else {
                 continue;
             };
+            if entries.len() >= MAX_DIR_ENTRIES {
+                overflow += 1;
+                continue;
+            }
             let name = item.file_name().to_string_lossy().to_string();
+            let heavy = kind == EntryKind::Directory && HEAVY_DIRS.contains(&name.as_str());
             entries.push(DirEntry {
                 name,
                 path: item.path().to_string_lossy().to_string(),
@@ -214,6 +272,8 @@ mod tests {
                 } else {
                     None
                 },
+                heavy,
+                truncated: false,
             });
         }
         entries.sort_by(|a, b| match (&a.kind, &b.kind) {
@@ -221,6 +281,16 @@ mod tests {
             (EntryKind::File, EntryKind::Directory) => std::cmp::Ordering::Greater,
             _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
         });
+        if overflow > 0 {
+            entries.push(DirEntry {
+                name: format!("…and {overflow} more hidden"),
+                path: String::new(),
+                kind: EntryKind::File,
+                size: None,
+                heavy: false,
+                truncated: true,
+            });
+        }
         Ok(entries)
     }
 
@@ -373,5 +443,92 @@ mod tests {
         let new_file = new_path.join("new.txt");
         write_text_file_inner(new_file.to_str().unwrap(), "brand new", &state).unwrap();
         assert_eq!(fs::read_to_string(&new_file).unwrap(), "brand new");
+    }
+
+    /// Directories beyond MAX_DIR_ENTRIES are truncated — the response
+    /// ends in a synthetic `truncated: true` sentinel.  This is the fix
+    /// for "one click on node_modules freezes the UI".
+    #[test]
+    fn list_directory_truncates_at_max_entries() {
+        let tmp = TempDir::new().unwrap();
+        // Create MAX_DIR_ENTRIES + 50 files. Naming them numerically keeps
+        // the sort cheap.
+        for i in 0..(MAX_DIR_ENTRIES + 50) {
+            fs::write(tmp.path().join(format!("f{i:05}.txt")), "").unwrap();
+        }
+        let state = state_with_root(tmp.path());
+        let entries = list_directory_inner(tmp.path().to_str().unwrap(), &state).unwrap();
+        // One sentinel on the end plus MAX_DIR_ENTRIES real rows.
+        assert_eq!(entries.len(), MAX_DIR_ENTRIES + 1);
+        let last = entries.last().unwrap();
+        assert!(last.truncated, "last entry must be the truncation sentinel");
+        assert!(
+            last.name.contains("50"),
+            "name should mention overflow count, got: {}",
+            last.name
+        );
+    }
+
+    /// Writing to a new file under a read-only parent triggers a persist
+    /// failure.  The atomic-rename design must leave the filesystem
+    /// unchanged (no partial file, no tempfile leaked into the tree).
+    #[cfg(unix)]
+    #[test]
+    fn write_text_file_persist_failure_leaves_target_untouched() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = TempDir::new().unwrap();
+        let parent = tmp.path().join("ro");
+        fs::create_dir(&parent).unwrap();
+        let target = parent.join("file.txt");
+        fs::write(&target, "original").unwrap();
+        // Make the parent dir read-only so NamedTempFile::new_in fails.
+        let mut perms = fs::metadata(&parent).unwrap().permissions();
+        perms.set_mode(0o555);
+        fs::set_permissions(&parent, perms).unwrap();
+
+        let state = state_with_root(tmp.path());
+        let result = write_text_file_inner(target.to_str().unwrap(), "new content", &state);
+        // Restore so TempDir::drop can clean up.
+        let mut perms = fs::metadata(&parent).unwrap().permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&parent, perms).unwrap();
+
+        assert!(result.is_err(), "must surface the persist failure");
+        // Crucially: the original content is still there.
+        assert_eq!(
+            fs::read_to_string(&target).unwrap(),
+            "original",
+            "atomic-rename design guarantees no partial write",
+        );
+        // And no stray tempfile got left behind in the parent.
+        let leftovers: Vec<_> = fs::read_dir(&parent)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(leftovers, vec!["file.txt".to_string()]);
+    }
+
+    /// `heavy` flag is set for node_modules / .git / target so the UI can
+    /// show a "click to load anyway" affordance.
+    #[test]
+    fn list_directory_flags_heavy_dirs() {
+        let tmp = TempDir::new().unwrap();
+        fs::create_dir(tmp.path().join("node_modules")).unwrap();
+        fs::create_dir(tmp.path().join(".git")).unwrap();
+        fs::create_dir(tmp.path().join("src")).unwrap();
+        fs::write(tmp.path().join("README.md"), "").unwrap();
+        let state = state_with_root(tmp.path());
+        let entries = list_directory_inner(tmp.path().to_str().unwrap(), &state).unwrap();
+        let heavy: Vec<&str> = entries
+            .iter()
+            .filter(|e| e.heavy)
+            .map(|e| e.name.as_str())
+            .collect();
+        // Note: entries are sorted dirs-first alpha; only heavy ones should flag true.
+        assert!(heavy.contains(&"node_modules"));
+        assert!(heavy.contains(&".git"));
+        assert!(!heavy.contains(&"src"));
+        assert!(!heavy.contains(&"README.md"));
     }
 }
