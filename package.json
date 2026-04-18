@@ -5,14 +5,14 @@
   "description": "Agent-native IDE built on Tauri 2 + SolidJS",
   "workspaces": ["packages/*"],
   "scripts": {
-    "dev": "bun --cwd packages/app run dev",
-    "build": "bun --cwd packages/app run build",
+    "dev": "cd packages/app && bun run dev",
+    "build": "cd packages/app && bun run build",
     "lint": "bunx --bun biome check .",
     "lint:fix": "bunx --bun biome check --write .",
     "format": "bunx --bun biome format --write .",
-    "typecheck": "bun --cwd packages/core run typecheck && bun --cwd packages/ui run typecheck && bun --cwd packages/app run typecheck",
-    "test": "bun --cwd packages/core run test && bun --cwd packages/ui run test && bun --cwd packages/app run test",
-    "tauri": "bun --cwd packages/app run tauri"
+    "typecheck": "(cd packages/core && bun run typecheck) && (cd packages/ui && bun run typecheck) && (cd packages/app && bun run typecheck)",
+    "test": "(cd packages/core && bun run test) && (cd packages/ui && bun run test) && (cd packages/app && bun run test)",
+    "tauri": "cd packages/app && bun run tauri"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

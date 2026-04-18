@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capability for the main app window. Filesystem access is provided exclusively through our custom path-guarded commands (list_directory / read_text_file / write_text_file in fs_commands.rs); the built-in tauri-plugin-fs IPC surface is intentionally NOT granted here, otherwise the renderer could bypass path_guard and read or write arbitrary paths.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:default",
+    "dialog:allow-open",
+    "opener:default",
+    "opener:allow-reveal-item-in-dir"
+  ]
+}

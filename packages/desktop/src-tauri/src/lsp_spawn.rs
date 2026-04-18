@@ -309,9 +309,9 @@ pub async fn spawn_lsp_server(
     let binary = resolve_server_binary(spec, coda_lsp_dir, bundled_root)?;
     let mut cmd = build_command(&binary, &spec.args, workspace_root);
     let child = cmd.spawn()?;
-    let pid = child.id().ok_or_else(|| {
-        LspSpawnError::Io("spawned child has no pid (already exited?)".into())
-    })?;
+    let pid = child
+        .id()
+        .ok_or_else(|| LspSpawnError::Io("spawned child has no pid (already exited?)".into()))?;
     let channel = registry.allocate(&spec.id);
     registry.attach_child(channel, child)?;
     Ok(SpawnResult { channel, pid })
@@ -319,6 +319,12 @@ pub async fn spawn_lsp_server(
 
 /// Kill an LSP server by channel id. Looks up the registry, removes the entry,
 /// and gracefully terminates the child.
+///
+/// `allow(await_holding_lock)` — the registry entry is owned by this call (we
+/// already removed it). The lock is uncontested and held only to pull the
+/// child handle out; keeping it across the await avoids restructuring the
+/// guard-scope for a case no other caller can reach.
+#[allow(clippy::await_holding_lock)]
 pub async fn kill_lsp_server(
     registry: &ChannelRegistry,
     channel: u64,
@@ -470,7 +476,10 @@ mod lsp_spawn_inline_tests {
         assert_eq!(std_cmd.get_program(), "/bin/echo");
         let args: Vec<_> = std_cmd.get_args().collect();
         assert_eq!(args, &["hello", "world"]);
-        assert_eq!(std_cmd.get_current_dir().map(|p| p.to_path_buf()), Some(wsroot));
+        assert_eq!(
+            std_cmd.get_current_dir().map(|p| p.to_path_buf()),
+            Some(wsroot)
+        );
     }
 
     #[tokio::test]

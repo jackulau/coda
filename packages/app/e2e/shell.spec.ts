@@ -1,20 +1,31 @@
 import { expect, test } from "@playwright/test"
 
-test("sidebar renders and shows + New Workspace entry", async ({ page }) => {
+test("sidebar renders with the primary open-folder button", async ({ page }) => {
   await page.goto("/")
   await expect(page.getByTestId("sidebar")).toBeVisible()
   await expect(page.getByTestId("new-workspace-btn")).toBeVisible()
-  await expect(page.getByTestId("new-workspace-btn")).toContainText("New Workspace")
+  // Post-T6 the primary action is "Open Folder…" rather than "+ New Workspace".
+  await expect(page.getByTestId("new-workspace-btn")).toContainText("Open Folder")
 })
 
 test("command palette opens with ⌘P / Ctrl+P", async ({ page }) => {
   await page.goto("/")
-  await page.keyboard.press("ControlOrMeta+p")
-  // Palette has an input or visible container; give it a short settle time.
-  await page.waitForTimeout(150)
-  // Should have some palette-related element (input or command list).
-  const anyPaletteInput = page.locator("input").first()
-  await expect(anyPaletteInput).toBeVisible()
+  await page.getByTestId("sidebar").click()
+  // Dispatch keydown directly in the page so platform detection can pick
+  // either Cmd or Ctrl based on navigator.platform without Playwright's
+  // device mapping getting in the way.
+  await page.evaluate(() => {
+    const isMac = navigator.platform.toLowerCase().includes("mac")
+    const e = new KeyboardEvent("keydown", {
+      key: "p",
+      metaKey: isMac,
+      ctrlKey: !isMac,
+      cancelable: true,
+      bubbles: true,
+    })
+    window.dispatchEvent(e)
+  })
+  await expect(page.getByRole("dialog", { name: /command palette/i })).toBeVisible()
 })
 
 test("CSP blocks inline script injection attempts", async ({ page }) => {

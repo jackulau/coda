@@ -18,7 +18,11 @@ use crate::lsp_spawn::{
 #[test]
 fn lsp_spawn_constants_match_spec() {
     assert_eq!(LSP_DIR_ENV, "CODA_LSP_DIR", "spec pins env var name");
-    assert_eq!(KILL_GRACE, Duration::from_secs(3), "spec pins SIGTERM grace");
+    assert_eq!(
+        KILL_GRACE,
+        Duration::from_secs(3),
+        "spec pins SIGTERM grace"
+    );
 }
 
 #[test]
@@ -136,10 +140,7 @@ async fn lsp_spawn_spawn_lsp_server_errors_on_missing_workspace() {
         .await
         .unwrap_err();
     assert!(
-        matches!(
-            err,
-            crate::lsp_spawn::LspSpawnError::MissingWorkspace(_)
-        ),
+        matches!(err, crate::lsp_spawn::LspSpawnError::MissingWorkspace(_)),
         "expected MissingWorkspace, got {:?}",
         err
     );
