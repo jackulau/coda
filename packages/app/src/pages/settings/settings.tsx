@@ -6,12 +6,15 @@ import {
   Keyboard,
   Paintbrush,
   Terminal as TerminalIcon,
+  X,
 } from "lucide-solid"
-import { type Component, For, createSignal } from "solid-js"
+import { type Component, For, createSignal, onCleanup, onMount } from "solid-js"
 
 interface Props {
   /** Legacy hook used by existing tests; still fires when Git → Save is clicked. */
   onSavePat?: (token: string) => void
+  /** Called when the user clicks ×, presses Escape, or hits Cmd+W. */
+  onClose?: () => void
 }
 
 type SectionId = "appearance" | "keyboard" | "terminal" | "updates" | "git" | "about"
@@ -68,6 +71,18 @@ export const SettingsPage: Component<Props> = (props) => {
     writeSettings(next)
   }
 
+  // Escape closes the settings page when a close handler is provided.
+  onMount(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && props.onClose) {
+        e.preventDefault()
+        props.onClose()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    onCleanup(() => window.removeEventListener("keydown", onKey))
+  })
+
   return (
     <div
       data-testid="settings-page"
@@ -76,6 +91,7 @@ export const SettingsPage: Component<Props> = (props) => {
         display: "flex",
         "flex-direction": "row",
         "min-height": 0,
+        position: "relative",
       }}
     >
       <nav
@@ -132,8 +148,58 @@ export const SettingsPage: Component<Props> = (props) => {
           padding: "24px 32px",
           overflow: "auto",
           "max-width": "720px",
+          position: "relative",
         }}
       >
+        {props.onClose && (
+          <button
+            type="button"
+            data-testid="settings-close"
+            aria-label="Close settings"
+            title="Close settings (Esc)"
+            onClick={() => props.onClose?.()}
+            style={{
+              position: "absolute",
+              top: "16px",
+              right: "16px",
+              display: "inline-flex",
+              "align-items": "center",
+              "justify-content": "center",
+              gap: "6px",
+              padding: "6px 10px",
+              background: "transparent",
+              border: "1px solid var(--border-default)",
+              color: "var(--text-secondary)",
+              "border-radius": "6px",
+              "font-size": "11px",
+              cursor: "pointer",
+              transition: "background-color var(--motion-fast), color var(--motion-fast)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--bg-2)"
+              e.currentTarget.style.color = "var(--text-primary)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent"
+              e.currentTarget.style.color = "var(--text-secondary)"
+            }}
+          >
+            <X size={12} aria-hidden="true" />
+            <span>Close</span>
+            <kbd
+              style={{
+                "font-family": "var(--font-mono)",
+                "font-size": "10px",
+                padding: "1px 4px",
+                "border-radius": "3px",
+                "background-color": "var(--bg-3)",
+                color: "var(--text-tertiary)",
+              }}
+            >
+              Esc
+            </kbd>
+          </button>
+        )}
         <SectionPane id="appearance" active={active()}>
           <SectionHeader icon={Paintbrush} title="Appearance" />
           <Row label="Theme" description="Dark theme only for now. Light theme is on the roadmap.">

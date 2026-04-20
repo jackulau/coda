@@ -66,7 +66,7 @@ export const CenterPanel: Component = () => {
         </Match>
         <Match when={page() === "settings"}>
           <PageWrap name="settings">
-            <SettingsPage />
+            <SettingsPage onClose={() => layout.navigate("editor")} />
           </PageWrap>
         </Match>
       </Switch>

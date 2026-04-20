@@ -1,17 +1,21 @@
 import { TerminalSquare, X } from "lucide-solid"
-import { type Component, createSignal } from "solid-js"
+import { type Component, createSignal, onCleanup, onMount } from "solid-js"
 
 /**
  * Terminal dock — a bottom-docked panel toggled via the status-bar button or
  * ⌘` / ⌘J. Today it renders a local echo buffer (commands are not yet piped
  * to a real pty). Wiring to Tauri's shell plugin is a follow-up; the UI
  * exists now so there's no mystery about where the terminal lives.
+ *
+ * Dismiss paths: the × button in the header, pressing Escape from the input,
+ * ⌘\`, ⌘J, or the status-bar toggle.
  */
 export const TerminalDock: Component<{ onClose: () => void }> = (props) => {
   const [input, setInput] = createSignal("")
   const [lines, setLines] = createSignal<string[]>([
     "Coda terminal — not yet connected to a pty.",
     "Commands echoed locally until the shell bridge ships.",
+    "Press Esc or click × to close.",
     "",
   ])
 
@@ -22,8 +26,28 @@ export const TerminalDock: Component<{ onClose: () => void }> = (props) => {
     setInput("")
   }
 
+  // Esc anywhere inside the dock closes it. We scope to the dock by checking
+  // e.target is inside the dock element — any outer Esc handler will still
+  // run for inputs outside.
+  let rootRef: HTMLElement | undefined
+  onMount(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return
+      if (!rootRef) return
+      if (rootRef.contains(e.target as Node)) {
+        e.preventDefault()
+        props.onClose()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    onCleanup(() => window.removeEventListener("keydown", onKey))
+  })
+
   return (
     <section
+      ref={(el) => {
+        rootRef = el
+      }}
       data-testid="terminal-dock"
       style={{
         height: "240px",
@@ -41,8 +65,8 @@ export const TerminalDock: Component<{ onClose: () => void }> = (props) => {
           display: "flex",
           "align-items": "center",
           "justify-content": "space-between",
-          height: "28px",
-          padding: "0 10px",
+          height: "32px",
+          padding: "0 6px 0 10px",
           "background-color": "var(--bg-1)",
           "border-bottom": "1px solid var(--border-subtle)",
         }}
@@ -65,19 +89,47 @@ export const TerminalDock: Component<{ onClose: () => void }> = (props) => {
           type="button"
           data-testid="terminal-close"
           aria-label="Close terminal"
+          title="Close terminal (Esc)"
           onClick={() => props.onClose()}
           style={{
-            background: "transparent",
-            border: "none",
-            color: "var(--text-tertiary)",
-            cursor: "pointer",
             display: "inline-flex",
             "align-items": "center",
-            padding: "2px",
-            "border-radius": "3px",
+            gap: "6px",
+            padding: "4px 8px",
+            background: "transparent",
+            border: "1px solid var(--border-default)",
+            color: "var(--text-secondary)",
+            "border-radius": "4px",
+            "font-size": "11px",
+            cursor: "pointer",
+            transition:
+              "background-color var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "var(--bg-2)"
+            e.currentTarget.style.color = "var(--text-primary)"
+            e.currentTarget.style.borderColor = "var(--border-emphasis)"
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent"
+            e.currentTarget.style.color = "var(--text-secondary)"
+            e.currentTarget.style.borderColor = "var(--border-default)"
           }}
         >
           <X size={12} aria-hidden="true" />
+          <span>Close</span>
+          <kbd
+            style={{
+              "font-family": "var(--font-mono)",
+              "font-size": "10px",
+              padding: "1px 4px",
+              "border-radius": "3px",
+              "background-color": "var(--bg-3)",
+              color: "var(--text-tertiary)",
+            }}
+          >
+            Esc
+          </kbd>
         </button>
       </header>
       <div
