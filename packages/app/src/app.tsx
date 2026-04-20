@@ -12,10 +12,12 @@ import { CenterPanel } from "./pages/layout/center-panel"
 import { RightRail } from "./pages/layout/right-rail"
 import { Sidebar } from "./pages/layout/sidebar"
 import { StatusBar } from "./pages/layout/status-bar"
+import { TerminalDock } from "./pages/layout/terminal-dock"
 import { TitleBar } from "./pages/layout/title-bar"
 
 const ShellStatusBar: Component = () => {
   const ws = useWorkspaces()
+  const layout = useLayout()
   const selected = () => ws.workspaces().find((w) => w.id === ws.selectedId())
   const diffCounts = () => {
     const s = selected()
@@ -26,6 +28,11 @@ const ShellStatusBar: Component = () => {
       branch={selected()?.branch}
       agentStatus={selected()?.agentStatus}
       diffCounts={diffCounts()}
+      terminalActive={layout.state().terminalVisible}
+      rightRailActive={layout.state().rightRailVisible}
+      onOpenSettings={() => layout.navigate("settings")}
+      onToggleTerminal={() => layout.toggleTerminal()}
+      onToggleRightRail={() => layout.toggleRightRail()}
     />
   )
 }
@@ -96,6 +103,17 @@ const Shell: Component = () => {
       if (mod && e.key === ",") {
         e.preventDefault()
         layout.navigate("settings")
+        return
+      }
+      if (mod && e.key === "`") {
+        e.preventDefault()
+        layout.toggleTerminal()
+        return
+      }
+      if (mod && e.key === "j") {
+        e.preventDefault()
+        layout.toggleTerminal()
+        return
       }
     }
     window.addEventListener("keydown", onKey)
@@ -144,6 +162,18 @@ const Shell: Component = () => {
       label: "Go to Editor",
       hint: "",
       run: () => layout.navigate("editor"),
+    },
+    {
+      id: "coda.view.toggle-terminal",
+      label: "Toggle Terminal",
+      hint: "⌘`",
+      run: () => layout.toggleTerminal(),
+    },
+    {
+      id: "coda.view.toggle-right-rail",
+      label: "Toggle Review Changes Rail",
+      hint: "",
+      run: () => layout.toggleRightRail(),
     },
   ]
 
@@ -230,10 +260,17 @@ const Shell: Component = () => {
         <ErrorBoundary fallback={(e) => <div>Center crash: {String(e)}</div>}>
           <CenterPanel />
         </ErrorBoundary>
-        <ErrorBoundary fallback={(e) => <div>Right-rail crash: {String(e)}</div>}>
-          <RightRail />
-        </ErrorBoundary>
+        {layout.state().rightRailVisible && (
+          <ErrorBoundary fallback={(e) => <div>Right-rail crash: {String(e)}</div>}>
+            <RightRail />
+          </ErrorBoundary>
+        )}
       </div>
+      {layout.state().terminalVisible && (
+        <ErrorBoundary fallback={(e) => <div>Terminal crash: {String(e)}</div>}>
+          <TerminalDock onClose={() => layout.toggleTerminal()} />
+        </ErrorBoundary>
+      )}
       <ShellStatusBar />
 
       <CommandPalette

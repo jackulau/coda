@@ -1,4 +1,4 @@
-import { ArrowUp, FileDiff, FilePlus, FileX, GitPullRequestArrow } from "lucide-solid"
+import { ArrowUp, FileDiff, FilePlus, FileX, GitPullRequestArrow, X } from "lucide-solid"
 import { type Component, For, Show, createMemo, createSignal } from "solid-js"
 
 export type ChangeKind = "add" | "modify" | "delete"
@@ -14,6 +14,7 @@ export interface ReviewChangesProps {
   files: ChangedFile[]
   prNumber?: number
   onPush?: (commitMessage: string) => void
+  onClose?: () => void
 }
 
 export const ReviewChangesPanel: Component<ReviewChangesProps> = (props) => {
@@ -43,23 +44,45 @@ export const ReviewChangesPanel: Component<ReviewChangesProps> = (props) => {
         <span style={{ "font-size": "13px", color: "var(--text-primary)", "font-weight": 500 }}>
           Review Changes
         </span>
-        <Show when={props.prNumber}>
-          {(n) => (
-            <span
-              data-testid="review-pr-number"
+        <span style={{ display: "inline-flex", "align-items": "center", gap: "10px" }}>
+          <Show when={props.prNumber}>
+            {(n) => (
+              <span
+                data-testid="review-pr-number"
+                style={{
+                  display: "inline-flex",
+                  "align-items": "center",
+                  gap: "4px",
+                  color: "var(--text-tertiary)",
+                  "font-family": "var(--font-mono)",
+                  "font-size": "11px",
+                }}
+              >
+                <GitPullRequestArrow size={12} aria-hidden="true" />#{n()}
+              </span>
+            )}
+          </Show>
+          <Show when={props.onClose}>
+            <button
+              type="button"
+              data-testid="review-close"
+              aria-label="Hide Review Changes"
+              onClick={() => props.onClose?.()}
               style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--text-tertiary)",
+                cursor: "pointer",
+                padding: "2px",
+                "border-radius": "3px",
                 display: "inline-flex",
                 "align-items": "center",
-                gap: "4px",
-                color: "var(--text-tertiary)",
-                "font-family": "var(--font-mono)",
-                "font-size": "11px",
               }}
             >
-              <GitPullRequestArrow size={12} aria-hidden="true" />#{n()}
-            </span>
-          )}
-        </Show>
+              <X size={14} aria-hidden="true" />
+            </button>
+          </Show>
+        </span>
       </header>
 
       <Show

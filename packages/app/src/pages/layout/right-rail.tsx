@@ -3,9 +3,9 @@ import { useLayout } from "../../context/layout"
 import { ReviewChangesPanel } from "./review-changes"
 
 /**
- * Right rail. Currently a "Review Changes" panel backed by an empty stub
- * (real git-status wiring lands in a follow-up). Layout survives an empty
- * change list by rendering a calm empty state rather than a dead panel.
+ * Right rail. Hosts the Review Changes panel. Hidden entirely when
+ * `layout.state().rightRailVisible` is false — parent shell decides whether
+ * to mount it; this component just renders the panel when mounted.
  */
 export const RightRail: Component = () => {
   const layout = useLayout()
@@ -23,7 +23,7 @@ export const RightRail: Component = () => {
         flex: "0 0 auto",
       }}
     >
-      <ReviewChangesPanel files={[]} />
+      <ReviewChangesPanel files={[]} onClose={() => layout.toggleRightRail()} />
     </aside>
   )
 }

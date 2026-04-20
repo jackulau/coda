@@ -20,6 +20,8 @@ export interface LayoutState {
   focusedWorkspaceId: string | null
   expandedProjects: Record<string, boolean>
   currentPage: CenterPage
+  rightRailVisible: boolean
+  terminalVisible: boolean
 }
 
 const DEFAULT: LayoutState = {
@@ -29,6 +31,8 @@ const DEFAULT: LayoutState = {
   focusedWorkspaceId: null,
   expandedProjects: {},
   currentPage: "editor",
+  rightRailVisible: true,
+  terminalVisible: false,
 }
 
 function loadInitial(): LayoutState {
@@ -50,6 +54,8 @@ interface LayoutCtx {
   focusWorkspace: (id: string | null) => void
   toggleProject: (id: string) => void
   navigate: (page: CenterPage) => void
+  toggleRightRail: () => void
+  toggleTerminal: () => void
 }
 
 const Ctx = createContext<LayoutCtx>()
@@ -81,6 +87,8 @@ export const LayoutProvider: Component<{ children: JSX.Element }> = (props) => {
       })
     },
     navigate: (page) => persist({ ...state(), currentPage: page }),
+    toggleRightRail: () => persist({ ...state(), rightRailVisible: !state().rightRailVisible }),
+    toggleTerminal: () => persist({ ...state(), terminalVisible: !state().terminalVisible }),
   }
 
   return <Ctx.Provider value={ctx}>{props.children}</Ctx.Provider>

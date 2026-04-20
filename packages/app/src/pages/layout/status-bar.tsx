@@ -1,10 +1,23 @@
-import { AlertCircle, Circle, CircleDot, GitBranch } from "lucide-solid"
+import {
+  AlertCircle,
+  Circle,
+  CircleDot,
+  Columns3,
+  GitBranch,
+  Settings,
+  TerminalSquare,
+} from "lucide-solid"
 import { type Component, Show } from "solid-js"
 
 interface Props {
   branch?: string
   agentStatus?: "idle" | "running" | "awaiting-input" | "error"
   diffCounts?: { additions: number; deletions: number }
+  onOpenSettings?: () => void
+  onToggleTerminal?: () => void
+  onToggleRightRail?: () => void
+  terminalActive?: boolean
+  rightRailActive?: boolean
 }
 
 const AGENT_LABEL: Record<NonNullable<Props["agentStatus"]>, string> = {
@@ -33,7 +46,7 @@ export const StatusBar: Component<Props> = (props) => {
       data-testid="status-bar"
       style={{
         height: "24px",
-        padding: "0 10px",
+        padding: "0 6px 0 10px",
         "border-top": "1px solid var(--border-subtle)",
         "background-color": "var(--bg-1)",
         display: "flex",
@@ -79,6 +92,70 @@ export const StatusBar: Component<Props> = (props) => {
           +{props.diffCounts?.additions} −{props.diffCounts?.deletions}
         </span>
       </Show>
+      <span style={{ flex: "1 1 auto" }} />
+      <StatusButton
+        testid="status-toggle-terminal"
+        label="Toggle terminal (⌘`)"
+        active={props.terminalActive}
+        onClick={() => props.onToggleTerminal?.()}
+      >
+        <TerminalSquare size={12} aria-hidden="true" />
+      </StatusButton>
+      <StatusButton
+        testid="status-toggle-right-rail"
+        label="Toggle review rail"
+        active={props.rightRailActive}
+        onClick={() => props.onToggleRightRail?.()}
+      >
+        <Columns3 size={12} aria-hidden="true" />
+      </StatusButton>
+      <StatusButton
+        testid="status-open-settings"
+        label="Settings (⌘,)"
+        onClick={() => props.onOpenSettings?.()}
+      >
+        <Settings size={12} aria-hidden="true" />
+      </StatusButton>
     </div>
   )
 }
+
+const StatusButton: Component<{
+  testid: string
+  label: string
+  active?: boolean
+  onClick: () => void
+  children: unknown
+}> = (props) => (
+  <button
+    type="button"
+    data-testid={props.testid}
+    aria-label={props.label}
+    title={props.label}
+    data-active={props.active ? "true" : "false"}
+    onClick={props.onClick}
+    style={{
+      display: "inline-flex",
+      "align-items": "center",
+      "justify-content": "center",
+      width: "22px",
+      height: "20px",
+      background: "transparent",
+      border: "none",
+      color: props.active ? "var(--text-primary)" : "var(--text-tertiary)",
+      cursor: "pointer",
+      "border-radius": "3px",
+      transition: "color var(--motion-fast), background-color var(--motion-fast)",
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.backgroundColor = "var(--bg-2)"
+      e.currentTarget.style.color = "var(--text-primary)"
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.backgroundColor = "transparent"
+      e.currentTarget.style.color = props.active ? "var(--text-primary)" : "var(--text-tertiary)"
+    }}
+  >
+    {props.children as never}
+  </button>
+)

@@ -1,5 +1,13 @@
 import { ChevronDown, ChevronRight, File as FileIcon, Folder, RefreshCw } from "lucide-solid"
-import { type Component, For, type JSX, Show, createMemo, createSignal } from "solid-js"
+import {
+  type Component,
+  For,
+  type JSX,
+  Show,
+  createEffect,
+  createMemo,
+  createSignal,
+} from "solid-js"
 import { type DirEntry, listDirectory as ipcListDirectory } from "../../lib/ipc"
 
 // Keep the legacy shape so existing callers (file-tree.vitest.tsx) still
@@ -122,8 +130,15 @@ export const FileTreeLive: Component<LiveProps> = (props) => {
     }
   }
 
-  // On first render, load the root.
-  ensureLoaded(props.rootPath)
+  // Reload whenever the root path changes — e.g. the user switches workspace.
+  // Without this effect, the tree clung to the first workspace's cache and
+  // showed "No files" for every workspace opened after that.
+  createEffect(() => {
+    const root = props.rootPath
+    setCache(new Map())
+    setExpanded(new Set([root]))
+    void loadDir(root)
+  })
 
   function toggle(path: string): void {
     const cur = expanded()
