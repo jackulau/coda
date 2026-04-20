@@ -11,7 +11,31 @@ import { revealInFinder } from "./lib/ipc"
 import { CenterPanel } from "./pages/layout/center-panel"
 import { RightRail } from "./pages/layout/right-rail"
 import { Sidebar } from "./pages/layout/sidebar"
+import { StatusBar } from "./pages/layout/status-bar"
+import { TerminalDock } from "./pages/layout/terminal-dock"
 import { TitleBar } from "./pages/layout/title-bar"
+
+const ShellStatusBar: Component = () => {
+  const ws = useWorkspaces()
+  const layout = useLayout()
+  const selected = () => ws.workspaces().find((w) => w.id === ws.selectedId())
+  const diffCounts = () => {
+    const s = selected()
+    return s ? { additions: s.additions, deletions: s.deletions } : undefined
+  }
+  return (
+    <StatusBar
+      branch={selected()?.branch}
+      agentStatus={selected()?.agentStatus}
+      diffCounts={diffCounts()}
+      terminalActive={layout.state().terminalVisible}
+      rightRailActive={layout.state().rightRailVisible}
+      onOpenSettings={() => layout.navigate("settings")}
+      onToggleTerminal={() => layout.toggleTerminal()}
+      onToggleRightRail={() => layout.toggleRightRail()}
+    />
+  )
+}
 
 const Shell: Component = () => {
   const ws = useWorkspaces()
@@ -73,7 +97,85 @@ const Shell: Component = () => {
   onMount(() => {
     const cleanup = bridge.install(handlers)
     onCleanup(cleanup)
+
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey
+      if (mod && e.key === ",") {
+        e.preventDefault()
+        layout.navigate("settings")
+        return
+      }
+      if (mod && e.key === "`") {
+        e.preventDefault()
+        layout.toggleTerminal()
+        return
+      }
+      if (mod && e.key === "j") {
+        e.preventDefault()
+        layout.toggleTerminal()
+        return
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    onCleanup(() => window.removeEventListener("keydown", onKey))
   })
+
+  const navCommands = (): PaletteCommand[] => [
+    {
+      id: "coda.nav.settings",
+      label: "Go to Settings",
+      hint: "⌘,",
+      run: () => layout.navigate("settings"),
+    },
+    {
+      id: "coda.nav.welcome",
+      label: "Go to Welcome",
+      hint: "",
+      run: () => layout.navigate("welcome"),
+    },
+    {
+      id: "coda.nav.git",
+      label: "Go to Git",
+      hint: "",
+      run: () => layout.navigate("git"),
+    },
+    {
+      id: "coda.nav.problems",
+      label: "Go to Problems",
+      hint: "",
+      run: () => layout.navigate("problems"),
+    },
+    {
+      id: "coda.nav.search",
+      label: "Go to Search",
+      hint: "⌘K ⌘F",
+      run: () => layout.navigate("search"),
+    },
+    {
+      id: "coda.nav.pr-review",
+      label: "Go to PR Review",
+      hint: "",
+      run: () => layout.navigate("pr-review"),
+    },
+    {
+      id: "coda.nav.editor",
+      label: "Go to Editor",
+      hint: "",
+      run: () => layout.navigate("editor"),
+    },
+    {
+      id: "coda.view.toggle-terminal",
+      label: "Toggle Terminal",
+      hint: "⌘`",
+      run: () => layout.toggleTerminal(),
+    },
+    {
+      id: "coda.view.toggle-right-rail",
+      label: "Toggle Review Changes Rail",
+      hint: "",
+      run: () => layout.toggleRightRail(),
+    },
+  ]
 
   const commands = (): PaletteCommand[] => {
     const extraCommands: PaletteCommand[] = [
@@ -109,6 +211,7 @@ const Shell: Component = () => {
       },
     ]
     return [
+      ...navCommands(),
       ...extraCommands,
       ...ws.workspaces().map((w) => ({
         id: `workspace.${w.id}`,
@@ -157,10 +260,19 @@ const Shell: Component = () => {
         <ErrorBoundary fallback={(e) => <div>Center crash: {String(e)}</div>}>
           <CenterPanel />
         </ErrorBoundary>
-        <ErrorBoundary fallback={(e) => <div>Right-rail crash: {String(e)}</div>}>
-          <RightRail />
-        </ErrorBoundary>
+        {layout.state().rightRailVisible && (
+          <ErrorBoundary fallback={(e) => <div>Right-rail crash: {String(e)}</div>}>
+            <RightRail />
+          </ErrorBoundary>
+        )}
       </div>
+      {layout.state().terminalVisible && (
+        <ErrorBoundary fallback={(e) => <div>Terminal crash: {String(e)}</div>}>
+          <TerminalDock onClose={() => layout.toggleTerminal()} />
+        </ErrorBoundary>
+      )}
+      <ShellStatusBar />
+
       <CommandPalette
         commands={commands()}
         open={paletteOpen}

@@ -13,6 +13,9 @@ describe("LayoutState shape (J2)", () => {
       portsPanelHeight: 180,
       focusedWorkspaceId: null,
       expandedProjects: {},
+      currentPage: "editor",
+      rightRailVisible: true,
+      terminalVisible: false,
     }
     expect(sample.sidebarWidth).toBe(280)
     expect(sample.focusedWorkspaceId).toBeNull()
@@ -25,6 +28,9 @@ describe("LayoutState shape (J2)", () => {
       portsPanelHeight: 180,
       focusedWorkspaceId: null,
       expandedProjects: { "project-1": true, "project-2": false },
+      currentPage: "editor",
+      rightRailVisible: true,
+      terminalVisible: false,
     }
     expect(sample.expandedProjects["project-1"]).toBe(true)
     expect(sample.expandedProjects["project-2"]).toBe(false)

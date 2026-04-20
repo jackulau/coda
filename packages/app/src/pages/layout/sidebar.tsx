@@ -1,3 +1,4 @@
+import { Plus } from "lucide-solid"
 import { type Component, For, Show } from "solid-js"
 import { useLayout } from "../../context/layout"
 import { useWorkspaces } from "../../context/workspace"
@@ -33,7 +34,7 @@ export const Sidebar: Component = () => {
         style={{
           height: "36px",
           margin: "8px",
-          "background-color": "var(--bg-2)",
+          "background-color": "transparent",
           color: "var(--text-secondary)",
           "border-radius": "6px",
           "font-size": "12px",
@@ -41,13 +42,23 @@ export const Sidebar: Component = () => {
           "align-items": "center",
           "justify-content": "space-between",
           padding: "0 10px",
-          transition: "background-color var(--motion-fast)",
+          transition: "background-color var(--motion-fast), color var(--motion-fast)",
           cursor: "pointer",
-          border: "none",
+          border: "1px solid var(--border-default)",
+        }}
+        onMouseEnter={(e) => {
+          const t = e.currentTarget
+          t.style.backgroundColor = "var(--bg-2)"
+          t.style.color = "var(--text-primary)"
+        }}
+        onMouseLeave={(e) => {
+          const t = e.currentTarget
+          t.style.backgroundColor = "transparent"
+          t.style.color = "var(--text-secondary)"
         }}
       >
-        <span>
-          <span style={{ color: "var(--accent-500)", "margin-right": "6px" }}>+</span>
+        <span style={{ display: "inline-flex", "align-items": "center", gap: "6px" }}>
+          <Plus size={12} aria-hidden="true" />
           Open Folder…
         </span>
         <span style={{ color: "var(--text-tertiary)", "font-size": "11px" }}>⌘O</span>
@@ -84,17 +95,10 @@ export const Sidebar: Component = () => {
                 <div>No workspace yet.</div>
                 <button
                   type="button"
+                  class="coda-btn-outlined"
                   data-testid="sidebar-empty-cta"
                   onClick={onAdd}
-                  style={{
-                    padding: "8px 12px",
-                    "background-color": "var(--accent-500)",
-                    color: "white",
-                    border: "none",
-                    "border-radius": "6px",
-                    cursor: "pointer",
-                    "font-size": "12px",
-                  }}
+                  style={{ "align-self": "center" }}
                 >
                   Open a folder
                 </button>

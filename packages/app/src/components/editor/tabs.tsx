@@ -1,3 +1,4 @@
+import { File as FileIcon, X } from "lucide-solid"
 import { type Component, For } from "solid-js"
 import type { Buffer } from "./buffer-manager"
 
@@ -11,8 +12,6 @@ export interface TabsProps {
 function basename(path: string): string {
   const i = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"))
   const tail = i >= 0 ? path.slice(i + 1) : path
-  // Path ending in "/" (root or trailing slash) would give an empty
-  // string; fall back to the full path so the tab always has a label.
   return tail || path || "untitled"
 }
 
@@ -25,7 +24,7 @@ export const Tabs: Component<TabsProps> = (props) => {
         "flex-direction": "row",
         "border-bottom": "1px solid var(--border-subtle)",
         "background-color": "var(--bg-1)",
-        height: "32px",
+        height: "36px",
         "align-items": "stretch",
         "overflow-x": "auto",
       }}
@@ -35,6 +34,7 @@ export const Tabs: Component<TabsProps> = (props) => {
           const isActive = () => props.activePath === b.path
           return (
             <div
+              class="coda-hover-parent"
               data-testid={`editor-tab-${b.path}`}
               data-active={isActive() ? "true" : "false"}
               data-dirty={b.dirty ? "true" : "false"}
@@ -48,9 +48,12 @@ export const Tabs: Component<TabsProps> = (props) => {
                 gap: "6px",
                 "background-color": isActive() ? "var(--bg-0)" : "transparent",
                 "border-right": "1px solid var(--border-subtle)",
+                "border-bottom": `2px solid ${isActive() ? "var(--accent-500)" : "transparent"}`,
                 "font-size": "12px",
-                color: "var(--text-secondary)",
+                color: isActive() ? "var(--text-primary)" : "var(--text-secondary)",
                 cursor: "pointer",
+                transition:
+                  "background-color var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast)",
               }}
               onClick={() => props.onFocus(b.path)}
               onKeyDown={(e) => {
@@ -60,6 +63,7 @@ export const Tabs: Component<TabsProps> = (props) => {
                 }
               }}
             >
+              <FileIcon size={12} aria-hidden="true" style={{ opacity: 0.7 }} />
               <span>{basename(b.path)}</span>
               {b.dirty && (
                 <span
@@ -68,28 +72,34 @@ export const Tabs: Component<TabsProps> = (props) => {
                     width: "8px",
                     height: "8px",
                     "border-radius": "50%",
-                    "background-color": "var(--accent-500)",
+                    "background-color": "rgba(232, 232, 236, 0.85)",
                   }}
                 />
               )}
               <button
                 type="button"
+                class="coda-hover-reveal"
                 data-testid={`editor-tab-close-${b.path}`}
                 onClick={(e) => {
                   e.stopPropagation()
                   props.onClose(b.path)
                 }}
                 style={{
+                  display: "inline-flex",
+                  "align-items": "center",
+                  "justify-content": "center",
+                  width: "16px",
+                  height: "16px",
                   background: "transparent",
                   border: "none",
                   color: "var(--text-tertiary)",
-                  "font-size": "14px",
                   cursor: "pointer",
-                  padding: "0 4px",
+                  padding: 0,
+                  "border-radius": "3px",
                 }}
                 aria-label={`Close ${basename(b.path)}`}
               >
-                ×
+                <X size={12} aria-hidden="true" />
               </button>
             </div>
           )
