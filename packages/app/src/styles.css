@@ -3,6 +3,8 @@
   --bg-1: #121214;
   --bg-2: #1a1a1d;
   --bg-3: #24242a;
+  --bg-input: #0d0d0f;
+  --bg-overlay: rgba(10, 10, 11, 0.85);
   --border-subtle: #1f1f23;
   --border-default: #2a2a30;
   --border-emphasis: #3a3a44;
@@ -110,6 +112,71 @@ button:focus-visible,
 [data-testid^="file-tree-row-"]:focus-visible {
   outline: 2px solid var(--accent-500);
   outline-offset: 1px;
+}
+
+/* Hoverable row pattern used by file-tree + workspace rows + nav entries. */
+.coda-row-hover {
+  transition: background-color var(--motion-fast), color var(--motion-fast);
+}
+.coda-row-hover:hover {
+  background-color: var(--bg-2);
+}
+
+/* Close button on tabs, list items — hidden unless parent hovered or active. */
+.coda-hover-reveal {
+  opacity: 0;
+  transition: opacity var(--motion-fast);
+}
+.coda-hover-parent:hover .coda-hover-reveal,
+.coda-hover-parent[data-active="true"] .coda-hover-reveal {
+  opacity: 1;
+}
+
+/* Port chip. */
+.coda-port-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: var(--bg-2);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+/* Outlined button (non-destructive CTA). */
+.coda-btn-outlined {
+  background: transparent;
+  border: 1px solid var(--accent-500);
+  color: var(--accent-500);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--motion-fast), color var(--motion-fast);
+}
+.coda-btn-outlined:hover {
+  background-color: var(--accent-glow);
+  color: #ff8a4c;
+}
+
+/* Filled button (primary CTA, uses text on accent). */
+.coda-btn-primary {
+  background-color: var(--bg-2);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--motion-fast), border-color var(--motion-fast);
+}
+.coda-btn-primary:hover {
+  background-color: var(--bg-3);
+  border-color: var(--border-emphasis);
 }
 
 /* Loading skeleton pulse used by file-tree / list placeholders. */

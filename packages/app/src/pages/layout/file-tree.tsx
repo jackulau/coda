@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronRight, File as FileIcon, Folder, RefreshCw } from "lucide-solid"
 import { type Component, For, type JSX, Show, createMemo, createSignal } from "solid-js"
 import { type DirEntry, listDirectory as ipcListDirectory } from "../../lib/ipc"
 
@@ -256,10 +257,11 @@ export const FileTreeLive: Component<LiveProps> = (props) => {
   function renderRow(row: FlatRow, idx: number): JSX.Element {
     const isErr = row.state?.kind === "error"
     const isLoad = row.state?.kind === "loading"
-    const chevron = row.kind === "directory" && !row.state ? (row.expanded ? "▾" : "▸") : ""
+    const showChevron = row.kind === "directory" && !row.state
     return (
       <button
         type="button"
+        class="coda-row-hover"
         data-testid={`file-tree-row-${row.path}`}
         data-kind={row.kind}
         data-depth={row.depth}
@@ -278,8 +280,10 @@ export const FileTreeLive: Component<LiveProps> = (props) => {
         style={{
           display: "flex",
           "align-items": "center",
+          gap: "4px",
           width: "100%",
-          padding: `2px 8px 2px ${row.depth * 12 + 8}px`,
+          height: "22px",
+          padding: `0 8px 0 ${row.depth * 12 + 8}px`,
           "background-color": focusedKey() === row.key ? "var(--bg-2)" : "transparent",
           color: isErr ? "var(--diff-remove)" : "var(--text-primary)",
           "font-size": "12px",
@@ -288,7 +292,32 @@ export const FileTreeLive: Component<LiveProps> = (props) => {
           cursor: row.state ? "default" : "pointer",
         }}
       >
-        <span style={{ width: "12px", "flex-shrink": 0 }}>{chevron}</span>
+        <span
+          aria-hidden="true"
+          style={{
+            width: "12px",
+            "flex-shrink": 0,
+            display: "inline-flex",
+            "align-items": "center",
+            "justify-content": "center",
+            color: "var(--text-tertiary)",
+          }}
+        >
+          {showChevron && (row.expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />)}
+        </span>
+        <span
+          aria-hidden="true"
+          data-testid={`file-tree-glyph-${row.kind === "directory" ? "folder" : "file"}`}
+          style={{
+            display: "inline-flex",
+            "align-items": "center",
+            "justify-content": "center",
+            "flex-shrink": 0,
+            color: row.kind === "directory" ? "var(--text-secondary)" : "var(--text-tertiary)",
+          }}
+        >
+          {row.kind === "directory" ? <Folder size={13} /> : <FileIcon size={13} />}
+        </span>
         {isLoad ? (
           <span
             class="coda-skeleton-row"
@@ -301,7 +330,11 @@ export const FileTreeLive: Component<LiveProps> = (props) => {
             }}
           />
         ) : (
-          <span>{row.name}</span>
+          <span
+            style={{ "white-space": "nowrap", overflow: "hidden", "text-overflow": "ellipsis" }}
+          >
+            {row.name}
+          </span>
         )}
       </button>
     )
@@ -328,20 +361,23 @@ export const FileTreeLive: Component<LiveProps> = (props) => {
           color: "var(--text-tertiary)",
         }}
       >
-        <span>FILES</span>
+        <span style={{ "letter-spacing": "0.05em", "text-transform": "uppercase" }}>Files</span>
         <button
           type="button"
           data-testid="file-tree-refresh"
           onClick={refresh}
+          aria-label="Refresh file tree"
           style={{
             background: "transparent",
             border: "none",
             color: "var(--text-tertiary)",
             cursor: "pointer",
-            "font-size": "11px",
+            display: "inline-flex",
+            "align-items": "center",
+            padding: "2px",
           }}
         >
-          ↻
+          <RefreshCw size={11} />
         </button>
       </div>
       <div style={{ flex: "1 1 auto", "overflow-y": "auto" }}>

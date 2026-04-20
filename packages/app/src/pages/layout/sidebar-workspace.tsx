@@ -81,26 +81,32 @@ export const WorkspaceRow: Component<Props> = (props) => {
           {props.workspace.branch}
         </span>
       </Show>
-      <DiffPill kind="add" n={props.workspace.additions} />
-      <DiffPill kind="remove" n={props.workspace.deletions} />
+      <DiffSummary additions={props.workspace.additions} deletions={props.workspace.deletions} />
     </button>
   )
 }
 
-const DiffPill: Component<{ kind: "add" | "remove"; n: number }> = (p) => (
-  <Show when={p.n > 0}>
+const DiffSummary: Component<{ additions: number; deletions: number }> = (p) => (
+  <Show when={p.additions > 0 || p.deletions > 0}>
     <span
+      data-testid="workspace-diff-counts"
       style={{
-        "background-color": "var(--bg-3)",
-        color: p.kind === "add" ? "var(--diff-add)" : "var(--diff-remove)",
-        "border-radius": "9999px",
-        padding: "1px 6px",
-        "font-size": "10px",
+        "margin-left": "auto",
+        "font-size": "11px",
         "font-family": "var(--font-mono)",
+        "white-space": "nowrap",
+        color: "var(--text-tertiary)",
       }}
     >
-      {p.kind === "add" ? "+" : "-"}
-      {p.n}
+      <Show when={p.additions > 0}>
+        <span style={{ color: "var(--diff-add)" }}>+{p.additions}</span>
+      </Show>
+      <Show when={p.additions > 0 && p.deletions > 0}>
+        <span>&nbsp;</span>
+      </Show>
+      <Show when={p.deletions > 0}>
+        <span style={{ color: "var(--diff-remove)" }}>−{p.deletions}</span>
+      </Show>
     </span>
   </Show>
 )

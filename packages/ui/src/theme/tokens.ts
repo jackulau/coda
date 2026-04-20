@@ -1,6 +1,13 @@
 export const tokens = {
   color: {
-    bg: { 0: "#0a0a0b", 1: "#121214", 2: "#1a1a1d", 3: "#24242a" },
+    bg: {
+      0: "#0a0a0b",
+      1: "#121214",
+      2: "#1a1a1d",
+      3: "#24242a",
+      input: "#0d0d0f",
+      overlay: "rgba(10,10,11,0.85)",
+    },
     border: { subtle: "#1f1f23", default: "#2a2a30", emphasis: "#3a3a44" },
     text: {
       primary: "#e8e8ec",
@@ -43,6 +50,7 @@ export const tokens = {
     "3xl": "48px",
   },
   radius: { sm: "4px", md: "6px", lg: "8px", xl: "12px", full: "9999px" },
+  row: { sm: "22px", md: "32px", lg: "40px" },
   shadow: {
     panel: "0 1px 2px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.25)",
     popover: "0 4px 16px rgba(0,0,0,0.5), 0 16px 48px rgba(0,0,0,0.35)",
