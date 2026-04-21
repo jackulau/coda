@@ -78,6 +78,46 @@ export function writeTextFile(
   return call<void>("write_text_file", args as unknown as Record<string, unknown>)
 }
 
+// --- git status ---------------------------------------------------------
+
+export type ChangeKind = "add" | "modify" | "delete"
+
+export interface ChangedFile {
+  path: string
+  kind: ChangeKind
+  additions: number
+  deletions: number
+}
+
+export function listChangedFiles(cwd: string): Promise<ChangedFile[]> {
+  return call<ChangedFile[]>("list_changed_files", { cwd })
+}
+
+// --- pty ----------------------------------------------------------------
+
+export interface PtySpawnArgs {
+  cwd: string
+  shell?: string
+  rows: number
+  cols: number
+}
+
+export function ptySpawn(args: PtySpawnArgs): Promise<string> {
+  return call<string>("pty_spawn", args as unknown as Record<string, unknown>)
+}
+
+export function ptyWrite(sessionId: string, data: string): Promise<void> {
+  return call<void>("pty_write", { sessionId, data })
+}
+
+export function ptyResize(sessionId: string, rows: number, cols: number): Promise<void> {
+  return call<void>("pty_resize", { sessionId, rows, cols })
+}
+
+export function ptyKill(sessionId: string): Promise<void> {
+  return call<void>("pty_kill", { sessionId })
+}
+
 // --- workspace registry -------------------------------------------------
 
 export interface RegisterWorkspaceArgs {
