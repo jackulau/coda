@@ -102,6 +102,7 @@ export const ResizeHandle: Component<ResizeHandleProps> = (props) => {
 
   return (
     <div
+      // biome-ignore lint/a11y/useSemanticElements: a draggable splitter cannot be <hr> (which is self-closing and non-interactive); div[role=separator] is the ARIA-correct pattern for an interactive resizer.
       role="separator"
       aria-orientation={isH() ? "vertical" : "horizontal"}
       aria-label={props.ariaLabel}
@@ -110,6 +111,7 @@ export const ResizeHandle: Component<ResizeHandleProps> = (props) => {
       data-dragging={dragging() ? "true" : "false"}
       onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
+      class="coda-resize-handle"
       style={{
         position: "relative",
         "flex-shrink": 0,
@@ -125,6 +127,9 @@ export const ResizeHandle: Component<ResizeHandleProps> = (props) => {
         transition: "background-color var(--motion-fast)",
         "user-select": "none",
         "touch-action": "none",
+        display: "flex",
+        "align-items": "center",
+        "justify-content": "center",
       }}
       onMouseEnter={(e) => {
         if (dragging()) return
@@ -141,6 +146,21 @@ export const ResizeHandle: Component<ResizeHandleProps> = (props) => {
         if (dragging()) return
         ;(e.currentTarget as HTMLElement).style.backgroundColor = "transparent"
       }}
-    />
+    >
+      <span
+        aria-hidden="true"
+        class="coda-resize-grip"
+        style={{
+          display: "inline-block",
+          width: isH() ? "2px" : "22px",
+          height: isH() ? "22px" : "2px",
+          "border-radius": "1px",
+          "background-color": "var(--text-tertiary)",
+          opacity: 0,
+          transition: "opacity var(--motion-fast)",
+          "pointer-events": "none",
+        }}
+      />
+    </div>
   )
 }

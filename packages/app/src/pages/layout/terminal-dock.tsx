@@ -1,7 +1,7 @@
+import { listen } from "@tauri-apps/api/event"
 import { FitAddon } from "@xterm/addon-fit"
 import { Terminal } from "@xterm/xterm"
 import xtermCss from "@xterm/xterm/css/xterm.css?inline"
-import { listen } from "@tauri-apps/api/event"
 import { TerminalSquare, X } from "lucide-solid"
 import { type Component, onCleanup, onMount } from "solid-js"
 import { ResizeHandle } from "../../components/resize-handle"
@@ -41,7 +41,7 @@ export const TerminalDock: Component<{ onClose: () => void }> = (props) => {
 
   const startPty = async () => {
     const sel = ws.workspaces().find((w) => w.id === ws.selectedId())
-    const cwd = sel?.cwd ?? (typeof process !== "undefined" ? process.cwd?.() ?? "." : ".")
+    const cwd = sel?.cwd ?? (typeof process !== "undefined" ? (process.cwd?.() ?? ".") : ".")
     if (!term || !fit) return
     fit.fit()
     const { rows, cols } = term
