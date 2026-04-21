@@ -202,3 +202,12 @@ button:focus-visible,
     opacity: 0.65;
   }
 }
+
+/* Resize handle: reveal the grip dash on hover/focus so the drag
+ * affordance is discoverable without cluttering the interface in its
+ * resting state. */
+.coda-resize-handle:hover .coda-resize-grip,
+.coda-resize-handle:focus-visible .coda-resize-grip,
+.coda-resize-handle[data-dragging="true"] .coda-resize-grip {
+  opacity: 0.85;
+}

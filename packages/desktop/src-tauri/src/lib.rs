@@ -2,8 +2,10 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 pub mod fs_commands;
+pub mod git_commands;
 pub mod lsp_spawn;
 pub mod path_guard;
+pub mod pty;
 pub mod sidecar_token;
 pub mod url_guard;
 pub mod workspace_registry;

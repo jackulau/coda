@@ -1,5 +1,6 @@
 import { Plus } from "lucide-solid"
 import { type Component, For, Show } from "solid-js"
+import { ResizeHandle } from "../../components/resize-handle"
 import { useLayout } from "../../context/layout"
 import { useWorkspaces } from "../../context/workspace"
 import { PortsPanel } from "./sidebar-ports"
@@ -25,6 +26,7 @@ export const Sidebar: Component = () => {
         display: "flex",
         "flex-direction": "column",
         flex: "0 0 auto",
+        position: "relative",
       }}
     >
       <button
@@ -120,6 +122,24 @@ export const Sidebar: Component = () => {
         </Show>
       </div>
       <PortsPanel />
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          display: "flex",
+        }}
+      >
+        <ResizeHandle
+          direction="horizontal"
+          side="far"
+          ariaLabel="Resize sidebar"
+          testId="sidebar-resize-handle"
+          onDrag={(d) => layout.setSidebarWidth(layout.state().sidebarWidth + d)}
+          onNudge={(d) => layout.setSidebarWidth(layout.state().sidebarWidth + d)}
+        />
+      </div>
     </aside>
   )
 }

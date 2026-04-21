@@ -4,6 +4,7 @@ import { CrashBanner } from "./components/crash-banner"
 import { EditorPanelProvider, useBufferManager } from "./components/editor/editor-panel"
 import { type HandlerMap, createShortcutBridge } from "./components/shortcut-bridge"
 import { ToastProvider } from "./components/toasts"
+import { GitStatusProvider, useGitStatus } from "./context/git-status"
 import { LayoutProvider, useLayout } from "./context/layout"
 import { useToasts } from "./context/toasts"
 import { WorkspaceProvider, useWorkspaces } from "./context/workspace"
@@ -18,10 +19,11 @@ import { TitleBar } from "./pages/layout/title-bar"
 const ShellStatusBar: Component = () => {
   const ws = useWorkspaces()
   const layout = useLayout()
+  const git = useGitStatus()
   const selected = () => ws.workspaces().find((w) => w.id === ws.selectedId())
   const diffCounts = () => {
-    const s = selected()
-    return s ? { additions: s.additions, deletions: s.deletions } : undefined
+    const s = git.summary()
+    return s.additions > 0 || s.deletions > 0 ? s : undefined
   }
   return (
     <StatusBar
@@ -118,6 +120,17 @@ const Shell: Component = () => {
     }
     window.addEventListener("keydown", onKey)
     onCleanup(() => window.removeEventListener("keydown", onKey))
+
+    const onOpenFile = (e: Event) => {
+      const path = (e as CustomEvent<{ path: string }>).detail?.path
+      if (typeof path !== "string") return
+      layout.navigate("editor")
+      void mgr.open(path).catch((err) => {
+        toasts.error("Open failed", err instanceof Error ? err.message : String(err))
+      })
+    }
+    window.addEventListener("coda:open-file", onOpenFile)
+    onCleanup(() => window.removeEventListener("coda:open-file", onOpenFile))
   })
 
   const navCommands = (): PaletteCommand[] => [
@@ -288,9 +301,11 @@ export const App: Component = () => {
     <LayoutProvider>
       <ToastProvider>
         <WorkspaceProvider>
-          <EditorPanelProvider>
-            <Shell />
-          </EditorPanelProvider>
+          <GitStatusProvider>
+            <EditorPanelProvider>
+              <Shell />
+            </EditorPanelProvider>
+          </GitStatusProvider>
         </WorkspaceProvider>
       </ToastProvider>
     </LayoutProvider>
