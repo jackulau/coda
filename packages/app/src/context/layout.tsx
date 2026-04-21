@@ -17,7 +17,10 @@ export interface LayoutState {
   sidebarWidth: number
   rightRailWidth: number
   portsPanelHeight: number
+  centerTreeWidth: number
+  terminalHeight: number
   focusedWorkspaceId: string | null
+  expandedWorkspaceId: string | null
   expandedProjects: Record<string, boolean>
   currentPage: CenterPage
   rightRailVisible: boolean
@@ -28,7 +31,10 @@ const DEFAULT: LayoutState = {
   sidebarWidth: 280,
   rightRailWidth: 380,
   portsPanelHeight: 180,
+  centerTreeWidth: 240,
+  terminalHeight: 240,
   focusedWorkspaceId: null,
+  expandedWorkspaceId: null,
   expandedProjects: {},
   currentPage: "editor",
   rightRailVisible: true,
@@ -51,8 +57,11 @@ interface LayoutCtx {
   setSidebarWidth: (n: number) => void
   setRightRailWidth: (n: number) => void
   setPortsPanelHeight: (n: number) => void
+  setCenterTreeWidth: (n: number) => void
+  setTerminalHeight: (n: number) => void
   focusWorkspace: (id: string | null) => void
   toggleProject: (id: string) => void
+  toggleWorkspaceTree: (id: string) => void
   navigate: (page: CenterPage) => void
   toggleRightRail: () => void
   toggleTerminal: () => void
@@ -78,12 +87,21 @@ export const LayoutProvider: Component<{ children: JSX.Element }> = (props) => {
     setSidebarWidth: (n) => persist({ ...state(), sidebarWidth: clamp(n, 220, 400) }),
     setRightRailWidth: (n) => persist({ ...state(), rightRailWidth: clamp(n, 300, 560) }),
     setPortsPanelHeight: (n) => persist({ ...state(), portsPanelHeight: Math.max(120, n) }),
+    setCenterTreeWidth: (n) => persist({ ...state(), centerTreeWidth: clamp(n, 180, 480) }),
+    setTerminalHeight: (n) => persist({ ...state(), terminalHeight: clamp(n, 120, 800) }),
     focusWorkspace: (id) => persist({ ...state(), focusedWorkspaceId: id }),
     toggleProject: (id) => {
       const cur = state()
       persist({
         ...cur,
         expandedProjects: { ...cur.expandedProjects, [id]: !cur.expandedProjects[id] },
+      })
+    },
+    toggleWorkspaceTree: (id) => {
+      const cur = state()
+      persist({
+        ...cur,
+        expandedWorkspaceId: cur.expandedWorkspaceId === id ? null : id,
       })
     },
     navigate: (page) => persist({ ...state(), currentPage: page }),

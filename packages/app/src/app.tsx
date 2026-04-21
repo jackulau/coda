@@ -118,6 +118,17 @@ const Shell: Component = () => {
     }
     window.addEventListener("keydown", onKey)
     onCleanup(() => window.removeEventListener("keydown", onKey))
+
+    const onOpenFile = (e: Event) => {
+      const path = (e as CustomEvent<{ path: string }>).detail?.path
+      if (typeof path !== "string") return
+      layout.navigate("editor")
+      void mgr.open(path).catch((err) => {
+        toasts.error("Open failed", err instanceof Error ? err.message : String(err))
+      })
+    }
+    window.addEventListener("coda:open-file", onOpenFile)
+    onCleanup(() => window.removeEventListener("coda:open-file", onOpenFile))
   })
 
   const navCommands = (): PaletteCommand[] => [
