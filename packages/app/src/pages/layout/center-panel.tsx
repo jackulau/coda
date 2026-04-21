@@ -1,115 +1,141 @@
-import { type Component, Show } from "solid-js"
+import { type Component, Match, Show, Switch } from "solid-js"
+import { EditorPanel, useBufferManager } from "../../components/editor/editor-panel"
+import { type CenterPage, useLayout } from "../../context/layout"
 import { useWorkspaces } from "../../context/workspace"
+import { GitPanel } from "../git"
+import { AddProjectForm } from "../onboarding/add-project"
+import { PrReviewPanel } from "../pr-review"
+import { ProblemsPanel } from "../problems"
+import { SearchPage } from "../search"
+import { SettingsPage } from "../settings/settings"
+import { WelcomePage } from "../welcome"
+import { FileTreeLive } from "./file-tree"
 
 export const CenterPanel: Component = () => {
-  const ws = useWorkspaces()
-  const focused = () => ws.workspaces().find((w) => w.id === ws.selectedId())
+  const layout = useLayout()
+  const page = (): CenterPage => layout.state().currentPage
 
   return (
     <main
       data-testid="center-panel"
+      data-page={page()}
       style={{
         flex: "1 1 auto",
         display: "flex",
-        "flex-direction": "column",
+        "flex-direction": "row",
         "min-width": 0,
         "background-color": "var(--bg-0)",
       }}
     >
-      <div
-        style={{
-          height: "32px",
-          "border-bottom": "1px solid var(--border-subtle)",
-          "background-color": "var(--bg-1)",
-          display: "flex",
-          "align-items": "center",
-          padding: "0 10px",
-          gap: "12px",
-          "font-size": "12px",
-          color: "var(--text-secondary)",
-        }}
-      >
-        <Show when={focused()} fallback={<span>Select a workspace from the sidebar.</span>}>
-          {(w) => (
-            <>
-              <span style={{ color: "var(--text-primary)" }}>Terminal · {w().name}</span>
-              <span style={{ color: "var(--text-tertiary)" }}>{w().branch}</span>
-            </>
-          )}
-        </Show>
-      </div>
-      <div
-        style={{
-          flex: "1 1 auto",
-          padding: "12px",
-          "font-family": "var(--font-mono)",
-          color: "var(--text-secondary)",
-        }}
-      >
-        <Show when={focused()} fallback={<EmptyState />}>
-          {(w) => (
-            <pre style={{ margin: 0, "white-space": "pre-wrap" }}>
-              {`$ cd ${w().cwd}
-$ claude --resume
-[claude] resumed session for ${w().name} on branch ${w().branch}
-[claude] ready (terminal scaffold — PTY backend wired in Phase C)
-`}
-            </pre>
-          )}
-        </Show>
-      </div>
-      <div
-        style={{
-          padding: "8px",
-          "background-color": "var(--bg-1)",
-          "border-top": "1px solid var(--border-subtle)",
-          display: "flex",
-          gap: "8px",
-        }}
-      >
-        <input
-          type="text"
-          placeholder="Type a task for Claude..."
-          style={{
-            flex: "1 1 auto",
-            padding: "6px 10px",
-            "background-color": "var(--bg-2)",
-            border: "1px solid var(--border-default)",
-            "border-radius": "6px",
-            color: "var(--text-primary)",
-            "font-family": "inherit",
-            "font-size": "13px",
-            outline: "none",
-          }}
-        />
-        <button
-          type="button"
-          style={{
-            padding: "6px 14px",
-            "background-color": "var(--accent-500)",
-            color: "var(--bg-0)",
-            "border-radius": "6px",
-            "font-weight": 600,
-            "font-size": "12px",
-          }}
-        >
-          ⏎ Send
-        </button>
-      </div>
+      <Switch fallback={<EditorView />}>
+        <Match when={page() === "welcome"}>
+          <PageWrap name="welcome">
+            <WelcomePage
+              onAddProject={() => layout.navigate("onboarding")}
+              onSkip={() => layout.navigate("editor")}
+            />
+          </PageWrap>
+        </Match>
+        <Match when={page() === "onboarding"}>
+          <PageWrap name="onboarding">
+            <div style={{ padding: "24px", "max-width": "480px" }}>
+              <h2 style={{ margin: "0 0 12px", "font-size": "16px" }}>Add a project</h2>
+              <AddProjectForm onSubmit={() => layout.navigate("editor")} />
+            </div>
+          </PageWrap>
+        </Match>
+        <Match when={page() === "git"}>
+          <PageWrap name="git">
+            <GitPanel files={[]} branch="main" />
+          </PageWrap>
+        </Match>
+        <Match when={page() === "problems"}>
+          <PageWrap name="problems">
+            <ProblemsPanel diagnostics={[]} />
+          </PageWrap>
+        </Match>
+        <Match when={page() === "search"}>
+          <PageWrap name="search">
+            <SearchPage />
+          </PageWrap>
+        </Match>
+        <Match when={page() === "pr-review"}>
+          <PageWrap name="pr-review">
+            <PrReviewPanel pr={null} />
+          </PageWrap>
+        </Match>
+        <Match when={page() === "settings"}>
+          <PageWrap name="settings">
+            <SettingsPage onClose={() => layout.navigate("editor")} />
+          </PageWrap>
+        </Match>
+      </Switch>
     </main>
   )
 }
 
-const EmptyState: Component = () => (
+const PageWrap: Component<{ name: string; children: unknown }> = (props) => (
   <div
+    data-testid={`page-${props.name}`}
     style={{
-      height: "100%",
+      flex: "1 1 auto",
       display: "flex",
-      "align-items": "center",
-      "justify-content": "center",
-      color: "var(--text-tertiary)",
+      "flex-direction": "column",
+      "min-width": 0,
+      overflow: "auto",
     }}
   >
-    Select a workspace from the sidebar.
+    {props.children as never}
   </div>
 )
+
+const EditorView: Component = () => {
+  const ws = useWorkspaces()
+  const mgr = useBufferManager()
+  const focused = () => ws.workspaces().find((w) => w.id === ws.selectedId())
+  return (
+    <Show
+      when={focused()}
+      fallback={
+        <div
+          data-testid="page-editor-empty"
+          style={{
+            flex: "1 1 auto",
+            display: "flex",
+            "align-items": "center",
+            "justify-content": "center",
+            color: "var(--text-tertiary)",
+            "font-size": "12px",
+          }}
+        >
+          Select a workspace from the sidebar.
+        </div>
+      }
+    >
+      {(w) => (
+        <>
+          <div
+            data-testid="center-panel-tree"
+            style={{
+              width: "240px",
+              "min-width": "200px",
+              "border-right": "1px solid var(--border-subtle)",
+              display: "flex",
+              "flex-direction": "column",
+            }}
+          >
+            <FileTreeLive
+              rootPath={w().cwd}
+              onOpenFile={(p) => {
+                void mgr.open(p).catch(() => {
+                  /* toasts handled by caller */
+                })
+              }}
+            />
+          </div>
+          <EditorPanel />
+        </>
+      )}
+    </Show>
+  )
+}

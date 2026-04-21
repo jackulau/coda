@@ -40,7 +40,10 @@ export const CrashBanner: Component = () => {
           display: "flex",
           "flex-direction": "column",
           gap: "6px",
-          "z-index": 500,
+          // Higher than the command palette (z-1000) and toast stack
+          // (z-1000) so a sidecar crash stays visible when the user is
+          // mid-palette or has toasts stacked.
+          "z-index": 1500,
         }}
       >
         <For each={banners()}>

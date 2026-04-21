@@ -1,6 +1,22 @@
 import type { ProjectInfo } from "@coda/core/project"
 import type { AgentStatus, WorkspaceInfo } from "@coda/core/workspace"
-import { type Component, type JSX, createContext, createSignal, useContext } from "solid-js"
+import {
+  type Component,
+  type JSX,
+  createContext,
+  createSignal,
+  onMount,
+  useContext,
+} from "solid-js"
+import {
+  type WorkspaceRecord,
+  getLastSelectedWorkspace as ipcGetLastSelected,
+  listWorkspaces as ipcListWorkspaces,
+  openFolderDialog as ipcOpenFolderDialog,
+  registerWorkspace as ipcRegisterWorkspace,
+  setLastSelectedWorkspace as ipcSetLastSelected,
+  unregisterWorkspace as ipcUnregisterWorkspace,
+} from "../lib/ipc"
 
 export interface WorkspaceUiRow extends WorkspaceInfo {
   agentStatus: AgentStatus
@@ -8,89 +24,144 @@ export interface WorkspaceUiRow extends WorkspaceInfo {
   deletions: number
 }
 
-const SUPERSET_ID = "00000000-0000-0000-0000-000000000001"
-const CODA_ID = "00000000-0000-0000-0000-000000000002"
-
-const DEMO_PROJECTS: ProjectInfo[] = [
-  {
-    id: SUPERSET_ID,
-    name: "superset",
-    rootPath: "~/code/superset",
-    expanded: true,
-    createdAt: Date.now(),
-  },
-  {
-    id: CODA_ID,
-    name: "coda",
-    rootPath: "~/code/coda",
-    expanded: true,
-    createdAt: Date.now(),
-  },
-]
-
-const DEMO_WORKSPACES: WorkspaceUiRow[] = [
-  {
-    id: "10000000-0000-0000-0000-000000000001",
-    projectId: SUPERSET_ID,
-    name: "metrics-explorer",
-    cwd: "~/code/superset/wt/metrics-explorer",
-    branch: "feat/metrics-explorer",
-    baseBranch: "main",
-    pinned: true,
-    createdAt: Date.now(),
-    agentStatus: "running",
-    additions: 412,
-    deletions: 87,
-  },
-  {
-    id: "10000000-0000-0000-0000-000000000002",
-    projectId: SUPERSET_ID,
-    name: "perf-budget",
-    cwd: "~/code/superset/wt/perf-budget",
-    branch: "fix/perf-budget",
-    baseBranch: "main",
-    pinned: false,
-    createdAt: Date.now(),
-    agentStatus: "awaiting-input",
-    additions: 18,
-    deletions: 3,
-  },
-  {
-    id: "10000000-0000-0000-0000-000000000003",
-    projectId: CODA_ID,
-    name: "shell-rebuild",
-    cwd: "~/code/coda/wt/shell-rebuild",
-    branch: "feat/shell-rebuild",
-    baseBranch: "main",
-    pinned: true,
-    createdAt: Date.now(),
-    agentStatus: "idle",
-    additions: 1240,
-    deletions: 412,
-  },
-]
-
-interface WorkspaceCtx {
+export interface WorkspaceCtx {
   projects: () => ProjectInfo[]
   workspaces: () => WorkspaceUiRow[]
   workspacesForProject: (projectId: string) => WorkspaceUiRow[]
   selectWorkspace: (id: string) => void
   selectedId: () => string | null
+  addWorkspaceFromDialog: () => Promise<WorkspaceRecord | null>
+  removeWorkspace: (id: string) => Promise<void>
+  isLoading: () => boolean
+  loadError: () => string | null
+  refresh: () => Promise<void>
 }
 
 const Ctx = createContext<WorkspaceCtx>()
 
-export const WorkspaceProvider: Component<{ children: JSX.Element }> = (props) => {
-  const [projects] = createSignal<ProjectInfo[]>(DEMO_PROJECTS)
-  const [workspaces] = createSignal<WorkspaceUiRow[]>(DEMO_WORKSPACES)
-  const [selectedId, setSelectedId] = createSignal<string | null>(DEMO_WORKSPACES[0]?.id ?? null)
+function recordToProject(rec: WorkspaceRecord): ProjectInfo {
+  return {
+    id: rec.id,
+    name: rec.name,
+    rootPath: rec.rootPath,
+    expanded: true,
+    createdAt: Date.parse(rec.addedAt) || Date.now(),
+  }
+}
+
+function recordToRow(rec: WorkspaceRecord): WorkspaceUiRow {
+  return {
+    id: rec.id,
+    projectId: rec.id,
+    name: rec.name,
+    cwd: rec.rootPath,
+    // Real git/agent status wiring is future work; start neutral.
+    branch: "main",
+    baseBranch: "main",
+    pinned: false,
+    createdAt: Date.parse(rec.addedAt) || Date.now(),
+    agentStatus: "idle",
+    additions: 0,
+    deletions: 0,
+  }
+}
+
+/**
+ * Props allow tests to inject stub IPC fns. In production the WorkspaceProvider
+ * uses the real IPC helpers from `../lib/ipc`.
+ */
+export interface WorkspaceProviderProps {
+  children: JSX.Element
+  /** @internal test hook */
+  ipc?: {
+    listWorkspaces?: typeof ipcListWorkspaces
+    registerWorkspace?: typeof ipcRegisterWorkspace
+    unregisterWorkspace?: typeof ipcUnregisterWorkspace
+    getLastSelectedWorkspace?: typeof ipcGetLastSelected
+    setLastSelectedWorkspace?: typeof ipcSetLastSelected
+    openFolderDialog?: typeof ipcOpenFolderDialog
+  }
+  /** Skip the onMount hydrate — tests that want to control timing. */
+  skipAutoHydrate?: boolean
+}
+
+export const WorkspaceProvider: Component<WorkspaceProviderProps> = (props) => {
+  const ipc = {
+    listWorkspaces: props.ipc?.listWorkspaces ?? ipcListWorkspaces,
+    registerWorkspace: props.ipc?.registerWorkspace ?? ipcRegisterWorkspace,
+    unregisterWorkspace: props.ipc?.unregisterWorkspace ?? ipcUnregisterWorkspace,
+    getLastSelectedWorkspace: props.ipc?.getLastSelectedWorkspace ?? ipcGetLastSelected,
+    setLastSelectedWorkspace: props.ipc?.setLastSelectedWorkspace ?? ipcSetLastSelected,
+    openFolderDialog: props.ipc?.openFolderDialog ?? ipcOpenFolderDialog,
+  }
+
+  const [projects, setProjects] = createSignal<ProjectInfo[]>([])
+  const [workspaces, setWorkspaces] = createSignal<WorkspaceUiRow[]>([])
+  const [selectedId, setSelectedId] = createSignal<string | null>(null)
+  const [isLoading, setLoading] = createSignal<boolean>(true)
+  const [loadError, setLoadError] = createSignal<string | null>(null)
+
+  async function refresh(): Promise<void> {
+    setLoading(true)
+    setLoadError(null)
+    try {
+      const records = await ipc.listWorkspaces()
+      setProjects(records.map(recordToProject))
+      setWorkspaces(records.map(recordToRow))
+      const last = await ipc.getLastSelectedWorkspace()
+      if (last && records.some((r) => r.id === last)) {
+        setSelectedId(last)
+      } else if (records.length > 0) {
+        setSelectedId(records[0]?.id ?? null)
+      } else {
+        setSelectedId(null)
+      }
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!props.skipAutoHydrate) {
+    onMount(() => {
+      void refresh()
+    })
+  }
+
+  async function addWorkspaceFromDialog(): Promise<WorkspaceRecord | null> {
+    const picked = await ipc.openFolderDialog()
+    if (!picked) return null
+    const rec = await ipc.registerWorkspace(picked)
+    await refresh()
+    setSelectedId(rec.id)
+    ipc.setLastSelectedWorkspace(rec.id).catch(() => {
+      /* non-fatal: UI already shows new selection */
+    })
+    return rec
+  }
+
+  async function removeWorkspace(id: string): Promise<void> {
+    await ipc.unregisterWorkspace(id)
+    await refresh()
+  }
 
   const ctx: WorkspaceCtx = {
     projects,
     workspaces,
     workspacesForProject: (projectId) => workspaces().filter((w) => w.projectId === projectId),
-    selectWorkspace: (id) => setSelectedId(id),
+    selectWorkspace: (id) => {
+      setSelectedId(id)
+      ipc.setLastSelectedWorkspace(id).catch(() => {
+        /* non-fatal: persistence is best-effort for the highlight */
+      })
+    },
     selectedId,
+    addWorkspaceFromDialog,
+    removeWorkspace,
+    isLoading,
+    loadError,
+    refresh,
   }
   return <Ctx.Provider value={ctx}>{props.children}</Ctx.Provider>
 }

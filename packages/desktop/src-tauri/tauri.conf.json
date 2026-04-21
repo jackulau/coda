@@ -4,9 +4,9 @@
   "version": "2.0.0-alpha.0",
   "identifier": "io.coda.desktop",
   "build": {
-    "beforeDevCommand": "bun --cwd ../../app run dev",
+    "beforeDevCommand": "cd ../app && bun run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "bun --cwd ../../app run build",
+    "beforeBuildCommand": "cd ../app && bun run build",
     "frontendDist": "../../app/dist"
   },
   "app": {

@@ -2,7 +2,18 @@
   "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
   "files": {
-    "ignore": ["node_modules", "dist", "build", "target", "spec.md", "**/*.generated.ts"]
+    "ignore": [
+      "node_modules",
+      "dist",
+      "build",
+      "target",
+      "spec.md",
+      "**/*.generated.ts",
+      "test-results",
+      "**/test-results/**",
+      "playwright-report",
+      "**/playwright-report/**"
+    ]
   },
   "formatter": {
     "enabled": true,
