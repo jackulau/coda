@@ -55,11 +55,25 @@ describe("WorkspaceRow (B2)", () => {
     expect(btn).toBeTruthy()
   })
 
-  test("additions/deletions counts render in row", () => {
+  test("diff counts are NOT rendered on the worktree row (belong to review panel)", () => {
     const big = { ...row, additions: 100, deletions: 50 }
     const { container } = renderRow(big)
-    // numeric badges are rendered somewhere in the row
-    expect(container.textContent).toContain("100")
-    expect(container.textContent).toContain("50")
+    // +100 / -50 should not leak into the row — they live in the Review panel
+    // and status bar only. The row only shows name, branch, and a status dot.
+    expect(container.textContent).not.toContain("100")
+    expect(container.textContent).not.toContain("50")
+  })
+
+  test("chevron toggle expands the inline file tree", () => {
+    const { container } = renderRow(row)
+    const toggle = container.querySelector(
+      "[data-testid='workspace-tree-toggle-feature-x']",
+    ) as HTMLButtonElement | null
+    expect(toggle).not.toBeNull()
+    expect(container.querySelector("[data-testid='workspace-tree-feature-x']")).toBeNull()
+    if (toggle) {
+      fireEvent.click(toggle)
+      expect(container.querySelector("[data-testid='workspace-tree-feature-x']")).toBeTruthy()
+    }
   })
 })

@@ -33,22 +33,16 @@ export const WorkspaceRow: Component<Props> = (props) => {
 
   return (
     <div data-testid={`workspace-row-${props.workspace.name}`}>
-      <button
-        type="button"
-        onClick={onSelect}
-        data-testid={`workspace-${props.workspace.name}`}
+      <div
         data-selected={isSelected() ? "true" : "false"}
         style={{
           width: "100%",
           height: "40px",
-          padding: "0 10px 0 4px",
           display: "flex",
           "align-items": "center",
-          gap: "6px",
           "background-color": isSelected() ? "var(--bg-2)" : "transparent",
           "border-left": `2px solid ${isSelected() ? "var(--accent-500)" : "transparent"}`,
           transition: "background-color var(--motion-fast)",
-          "text-align": "left",
           position: "relative",
         }}
       >
@@ -64,6 +58,7 @@ export const WorkspaceRow: Component<Props> = (props) => {
             "justify-content": "center",
             width: "18px",
             height: "18px",
+            "margin-left": "4px",
             "border-radius": "3px",
             background: "transparent",
             border: "none",
@@ -77,46 +72,66 @@ export const WorkspaceRow: Component<Props> = (props) => {
             <ChevronDown size={13} aria-hidden="true" />
           </Show>
         </button>
-        <span
-          aria-label={`agent ${props.workspace.agentStatus}`}
+        <button
+          type="button"
+          onClick={onSelect}
+          data-testid={`workspace-${props.workspace.name}`}
+          data-selected={isSelected() ? "true" : "false"}
           style={{
-            width: "8px",
-            height: "8px",
-            "border-radius": "50%",
-            "background-color": STATUS_COLOR[props.workspace.agentStatus],
-            "box-shadow": "0 0 0 2px var(--bg-1)",
-            animation: props.workspace.agentStatus === "running" ? "pulse 1.6s infinite" : "none",
-            "flex-shrink": 0,
-          }}
-        />
-        <span
-          style={{
-            color: "var(--text-primary)",
-            "font-size": "13px",
             flex: "1 1 auto",
-            "white-space": "nowrap",
-            overflow: "hidden",
-            "text-overflow": "ellipsis",
+            height: "100%",
+            padding: "0 10px 0 6px",
+            display: "flex",
+            "align-items": "center",
+            gap: "6px",
+            background: "transparent",
+            border: "none",
+            "text-align": "left",
+            cursor: "pointer",
+            "min-width": 0,
           }}
         >
-          {props.workspace.name}
-        </span>
-        <Show when={props.workspace.branch}>
           <span
+            aria-label={`agent ${props.workspace.agentStatus}`}
             style={{
-              color: "var(--text-tertiary)",
-              "font-size": "11px",
-              "white-space": "nowrap",
-              "max-width": "120px",
-              overflow: "hidden",
-              "text-overflow": "ellipsis",
+              width: "8px",
+              height: "8px",
+              "border-radius": "50%",
+              "background-color": STATUS_COLOR[props.workspace.agentStatus],
+              "box-shadow": "0 0 0 2px var(--bg-1)",
+              animation: props.workspace.agentStatus === "running" ? "pulse 1.6s infinite" : "none",
               "flex-shrink": 0,
             }}
+          />
+          <span
+            style={{
+              color: "var(--text-primary)",
+              "font-size": "13px",
+              flex: "1 1 auto",
+              "white-space": "nowrap",
+              overflow: "hidden",
+              "text-overflow": "ellipsis",
+            }}
           >
-            {props.workspace.branch}
+            {props.workspace.name}
           </span>
-        </Show>
-      </button>
+          <Show when={props.workspace.branch}>
+            <span
+              style={{
+                color: "var(--text-tertiary)",
+                "font-size": "11px",
+                "white-space": "nowrap",
+                "max-width": "120px",
+                overflow: "hidden",
+                "text-overflow": "ellipsis",
+                "flex-shrink": 0,
+              }}
+            >
+              {props.workspace.branch}
+            </span>
+          </Show>
+        </button>
+      </div>
       <Show when={isExpanded()}>
         <div
           data-testid={`workspace-tree-${props.workspace.name}`}

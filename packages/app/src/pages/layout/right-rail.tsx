@@ -1,4 +1,5 @@
 import type { Component } from "solid-js"
+import { ResizeHandle } from "../../components/resize-handle"
 import { useLayout } from "../../context/layout"
 import { ReviewChangesPanel } from "./review-changes"
 
@@ -19,11 +20,21 @@ export const RightRail: Component = () => {
         "background-color": "var(--bg-1)",
         "border-left": "1px solid var(--border-subtle)",
         display: "flex",
-        "flex-direction": "column",
+        "flex-direction": "row",
         flex: "0 0 auto",
+        position: "relative",
       }}
     >
-      <ReviewChangesPanel files={[]} onClose={() => layout.toggleRightRail()} />
+      <ResizeHandle
+        direction="horizontal"
+        ariaLabel="Resize review panel"
+        testId="right-rail-resize-handle"
+        onDrag={(d) => layout.setRightRailWidth(layout.state().rightRailWidth - d)}
+        onNudge={(d) => layout.setRightRailWidth(layout.state().rightRailWidth - d)}
+      />
+      <div style={{ flex: "1 1 auto", display: "flex", "flex-direction": "column", "min-width": 0 }}>
+        <ReviewChangesPanel files={[]} onClose={() => layout.toggleRightRail()} />
+      </div>
     </aside>
   )
 }

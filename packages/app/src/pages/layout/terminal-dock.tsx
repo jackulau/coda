@@ -1,5 +1,7 @@
 import { TerminalSquare, X } from "lucide-solid"
 import { type Component, createSignal, onCleanup, onMount } from "solid-js"
+import { ResizeHandle } from "../../components/resize-handle"
+import { useLayout } from "../../context/layout"
 
 /**
  * Terminal dock — a bottom-docked panel toggled via the status-bar button or
@@ -11,6 +13,7 @@ import { type Component, createSignal, onCleanup, onMount } from "solid-js"
  * ⌘\`, ⌘J, or the status-bar toggle.
  */
 export const TerminalDock: Component<{ onClose: () => void }> = (props) => {
+  const layout = useLayout()
   const [input, setInput] = createSignal("")
   const [lines, setLines] = createSignal<string[]>([
     "Coda terminal — not yet connected to a pty.",
@@ -50,16 +53,24 @@ export const TerminalDock: Component<{ onClose: () => void }> = (props) => {
       }}
       data-testid="terminal-dock"
       style={{
-        height: "240px",
-        "min-height": "180px",
-        "max-height": "50vh",
+        height: `${layout.state().terminalHeight}px`,
+        "min-height": "120px",
+        "max-height": "80vh",
         "flex-shrink": 0,
         "border-top": "1px solid var(--border-subtle)",
         display: "flex",
         "flex-direction": "column",
         "background-color": "var(--bg-0)",
+        position: "relative",
       }}
     >
+      <ResizeHandle
+        direction="vertical"
+        ariaLabel="Resize terminal"
+        testId="terminal-resize-handle"
+        onDrag={(d) => layout.setTerminalHeight(layout.state().terminalHeight - d)}
+        onNudge={(d) => layout.setTerminalHeight(layout.state().terminalHeight - d)}
+      />
       <header
         style={{
           display: "flex",

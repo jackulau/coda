@@ -1,5 +1,6 @@
 import { type Component, Match, Show, Switch } from "solid-js"
 import { EditorPanel, useBufferManager } from "../../components/editor/editor-panel"
+import { ResizeHandle } from "../../components/resize-handle"
 import { type CenterPage, useLayout } from "../../context/layout"
 import { useWorkspaces } from "../../context/workspace"
 import { GitPanel } from "../git"
@@ -92,6 +93,7 @@ const PageWrap: Component<{ name: string; children: unknown }> = (props) => (
 const EditorView: Component = () => {
   const ws = useWorkspaces()
   const mgr = useBufferManager()
+  const layout = useLayout()
   const focused = () => ws.workspaces().find((w) => w.id === ws.selectedId())
   return (
     <Show
@@ -117,11 +119,13 @@ const EditorView: Component = () => {
           <div
             data-testid="center-panel-tree"
             style={{
-              width: "240px",
-              "min-width": "200px",
+              width: `${layout.state().centerTreeWidth}px`,
+              "min-width": "180px",
+              "max-width": "480px",
               "border-right": "1px solid var(--border-subtle)",
               display: "flex",
               "flex-direction": "column",
+              flex: "0 0 auto",
             }}
           >
             <FileTreeLive
@@ -133,6 +137,13 @@ const EditorView: Component = () => {
               }}
             />
           </div>
+          <ResizeHandle
+            direction="horizontal"
+            ariaLabel="Resize file tree"
+            testId="center-tree-resize-handle"
+            onDrag={(d) => layout.setCenterTreeWidth(layout.state().centerTreeWidth + d)}
+            onNudge={(d) => layout.setCenterTreeWidth(layout.state().centerTreeWidth + d)}
+          />
           <EditorPanel />
         </>
       )}
