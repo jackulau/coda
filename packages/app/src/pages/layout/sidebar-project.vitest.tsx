@@ -7,10 +7,10 @@ import { ProjectGroup } from "./sidebar-project"
 
 afterEach(cleanup)
 
-const superset: ProjectInfo = {
+const sampleProject: ProjectInfo = {
   id: "00000000-0000-0000-0000-000000000001",
-  name: "superset",
-  rootPath: "~/code/superset",
+  name: "sample-project",
+  rootPath: "~/code/sample-project",
   expanded: true,
   createdAt: Date.now(),
 }
@@ -35,8 +35,8 @@ function renderGroup(project: ProjectInfo) {
 
 describe("ProjectGroup (B1)", () => {
   test("renders the project name in the header button", () => {
-    renderGroup(superset)
-    expect(screen.getByText("superset")).toBeDefined()
+    renderGroup(sampleProject)
+    expect(screen.getByText("sample-project")).toBeDefined()
   })
 
   test("renders a data-testid scoped to the project name", () => {
@@ -45,8 +45,7 @@ describe("ProjectGroup (B1)", () => {
   })
 
   test("shows workspace children when project expanded (demo data)", () => {
-    renderGroup(superset)
-    // demo workspaces include 'metrics-explorer' under superset
+    renderGroup(sampleProject)
     expect(screen.queryByText("metrics-explorer")).toBeDefined()
   })
 
