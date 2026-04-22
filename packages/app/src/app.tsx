@@ -1,4 +1,11 @@
-import { type Component, ErrorBoundary, createSignal, onCleanup, onMount } from "solid-js"
+import {
+  type Component,
+  ErrorBoundary,
+  createEffect,
+  createSignal,
+  onCleanup,
+  onMount,
+} from "solid-js"
 import { CommandPalette, type PaletteCommand } from "./components/command-palette"
 import { CrashBanner } from "./components/crash-banner"
 import { EditorPanelProvider, useBufferManager } from "./components/editor/editor-panel"
@@ -10,6 +17,7 @@ import { LayoutProvider, useLayout } from "./context/layout"
 import { TerminalTabsProvider } from "./context/terminal-tabs"
 import { useToasts } from "./context/toasts"
 import { WorkspaceProvider, useWorkspaces } from "./context/workspace"
+import { applySettingsToDocument } from "./lib/apply-settings"
 import { revealInFinder } from "./lib/ipc"
 import { CenterPanel } from "./pages/layout/center-panel"
 import { RightRail } from "./pages/layout/right-rail"
@@ -17,6 +25,7 @@ import { Sidebar } from "./pages/layout/sidebar"
 import { StatusBar } from "./pages/layout/status-bar"
 import { TerminalDock } from "./pages/layout/terminal-dock"
 import { TitleBar } from "./pages/layout/title-bar"
+import { useSettings } from "./pages/settings/settings-store"
 
 const ShellStatusBar: Component = () => {
   const ws = useWorkspaces()
@@ -49,6 +58,15 @@ const Shell: Component = () => {
   const fileIndex = useFileIndex()
   const [paletteOpen, setPaletteOpen] = createSignal(false)
   const [sidebarVisible, setSidebarVisible] = createSignal(true)
+
+  const settings = useSettings()
+
+  // Apply document-level settings (color scheme, font, reduced motion)
+  // whenever the settings signal changes.
+  createEffect(() => {
+    const cleanup = applySettingsToDocument(settings())
+    if (cleanup) onCleanup(cleanup)
+  })
 
   const bridge = createShortcutBridge()
 
