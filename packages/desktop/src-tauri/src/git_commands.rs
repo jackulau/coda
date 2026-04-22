@@ -52,6 +52,7 @@ fn resolve_cwd(cwd: &str, state: &AppState) -> Result<PathBuf, String> {
     resolve_safe(std::path::Path::new(cwd), &roots).map_err(|e| e.to_string())
 }
 
+
 #[tauri::command]
 pub async fn list_changed_files(
     cwd: String,
@@ -100,6 +101,7 @@ pub async fn git_commit_diff(
     let safe = resolve_cwd(&cwd, &state)?;
     collect_commit_diff(&safe, &hash)
 }
+
 
 pub fn collect_changed_files(repo: &std::path::Path) -> Result<Vec<ChangedFile>, String> {
     let status_out = Command::new("git")
@@ -345,6 +347,7 @@ pub fn collect_commit_diff(repo: &std::path::Path, hash: &str) -> Result<String,
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+
 fn parse_numstat(text: &str) -> std::collections::HashMap<String, (u32, u32)> {
     let mut map = std::collections::HashMap::new();
     for line in text.lines() {
@@ -424,6 +427,7 @@ mod tests {
         let err = collect_commit_diff(tmp.path(), "abc; rm -rf /").unwrap_err();
         assert!(err.contains("invalid commit hash"), "got: {err}");
     }
+
 
     /// End-to-end: create a fresh repo, add+modify+delete files, and confirm
     /// collect_changed_files groups them correctly. Requires `git` on PATH.
