@@ -17,7 +17,7 @@ import { LayoutProvider, useLayout } from "./context/layout"
 import { TerminalTabsProvider } from "./context/terminal-tabs"
 import { useToasts } from "./context/toasts"
 import { WorkspaceProvider, useWorkspaces } from "./context/workspace"
-import { applySettingsToDocument } from "./lib/apply-settings"
+import { applySettingsToDocument, centerOrder, sidebarOrder } from "./lib/apply-settings"
 import { revealInFinder } from "./lib/ipc"
 import { CenterPanel } from "./pages/layout/center-panel"
 import { RightRail } from "./pages/layout/right-rail"
@@ -298,17 +298,37 @@ const Shell: Component = () => {
         }}
       >
         {sidebarVisible() && (
-          <ErrorBoundary fallback={(e) => <div>Sidebar crash: {String(e)}</div>}>
-            <Sidebar />
-          </ErrorBoundary>
+          <div
+            style={{
+              order: sidebarOrder(settings().sidebarPosition),
+              display: "flex",
+              "min-height": 0,
+            }}
+          >
+            <ErrorBoundary fallback={(e) => <div>Sidebar crash: {String(e)}</div>}>
+              <Sidebar />
+            </ErrorBoundary>
+          </div>
         )}
-        <ErrorBoundary fallback={(e) => <div>Center crash: {String(e)}</div>}>
-          <CenterPanel />
-        </ErrorBoundary>
-        {layout.state().rightRailVisible && (
-          <ErrorBoundary fallback={(e) => <div>Right-rail crash: {String(e)}</div>}>
-            <RightRail />
+        <div
+          style={{
+            order: centerOrder(settings().sidebarPosition),
+            display: "flex",
+            flex: "1 1 auto",
+            "min-height": 0,
+            "min-width": 0,
+          }}
+        >
+          <ErrorBoundary fallback={(e) => <div>Center crash: {String(e)}</div>}>
+            <CenterPanel />
           </ErrorBoundary>
+        </div>
+        {layout.state().rightRailVisible && (
+          <div style={{ order: 3, display: "flex", "min-height": 0 }}>
+            <ErrorBoundary fallback={(e) => <div>Right-rail crash: {String(e)}</div>}>
+              <RightRail />
+            </ErrorBoundary>
+          </div>
         )}
       </div>
       {layout.state().terminalVisible && (
