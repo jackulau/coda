@@ -45,6 +45,14 @@ describe("mergeSettings", () => {
     expect(out.fontSize).toBe(18)
     expect(out.cursorStyle).toBe("bar")
   })
+
+  test("cursorStyle block preserves other fields", () => {
+    const out = mergeSettings(DEFAULT_TERMINAL_SETTINGS, { cursorStyle: "block" })
+    expect(out.cursorStyle).toBe("block")
+    expect(out.fontSize).toBe(14)
+    expect(out.scrollback).toBe(10_000)
+    expect(out.cursorBlink).toBe(false)
+  })
 })
 
 describe("applyScrollbackChange", () => {

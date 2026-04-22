@@ -1,3 +1,4 @@
+import { effectiveCursorBlink } from "@coda/core/terminal-settings/settings"
 import { listen } from "@tauri-apps/api/event"
 import { FitAddon } from "@xterm/addon-fit"
 import { Terminal } from "@xterm/xterm"
@@ -81,7 +82,9 @@ export const TerminalDock: Component<{ onClose: () => void }> = (props) => {
     if (!mountRef) return
     term = new Terminal({
       convertEol: true,
-      cursorBlink: true,
+      cursorBlink: effectiveCursorBlink(settings().terminalCursorBlink, settings().reducedMotion),
+      cursorStyle: settings().terminalCursorStyle,
+      scrollback: settings().terminalScrollback,
       fontFamily: "var(--font-mono), Menlo, Monaco, monospace",
       fontSize: 12,
       theme: {
@@ -111,6 +114,12 @@ export const TerminalDock: Component<{ onClose: () => void }> = (props) => {
       if (!term) return
       const palette = terminalThemeFor(settings().theme)
       term.options.theme = { ...term.options.theme, ...palette }
+      term.options.cursorStyle = settings().terminalCursorStyle
+      term.options.cursorBlink = effectiveCursorBlink(
+        settings().terminalCursorBlink,
+        settings().reducedMotion,
+      )
+      term.options.scrollback = settings().terminalScrollback
     })
 
     const onKey = (e: KeyboardEvent) => {
