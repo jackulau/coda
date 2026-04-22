@@ -4,8 +4,10 @@ import { CrashBanner } from "./components/crash-banner"
 import { EditorPanelProvider, useBufferManager } from "./components/editor/editor-panel"
 import { type HandlerMap, createShortcutBridge } from "./components/shortcut-bridge"
 import { ToastProvider } from "./components/toasts"
+import { FileIndexProvider, useFileIndex } from "./context/file-index"
 import { GitStatusProvider, useGitStatus } from "./context/git-status"
 import { LayoutProvider, useLayout } from "./context/layout"
+import { TerminalTabsProvider } from "./context/terminal-tabs"
 import { useToasts } from "./context/toasts"
 import { WorkspaceProvider, useWorkspaces } from "./context/workspace"
 import { revealInFinder } from "./lib/ipc"
@@ -44,6 +46,7 @@ const Shell: Component = () => {
   const mgr = useBufferManager()
   const toasts = useToasts()
   const layout = useLayout()
+  const fileIndex = useFileIndex()
   const [paletteOpen, setPaletteOpen] = createSignal(false)
   const [sidebarVisible, setSidebarVisible] = createSignal(true)
 
@@ -117,6 +120,11 @@ const Shell: Component = () => {
         layout.toggleTerminal()
         return
       }
+      if (mod && e.shiftKey && e.key === "F") {
+        e.preventDefault()
+        layout.navigate("search")
+        return
+      }
     }
     window.addEventListener("keydown", onKey)
     onCleanup(() => window.removeEventListener("keydown", onKey))
@@ -175,6 +183,12 @@ const Shell: Component = () => {
       label: "Go to Editor",
       hint: "",
       run: () => layout.navigate("editor"),
+    },
+    {
+      id: "coda.nav.browser",
+      label: "Go to Browser",
+      hint: "",
+      run: () => layout.navigate("browser"),
     },
     {
       id: "coda.view.toggle-terminal",
@@ -288,8 +302,18 @@ const Shell: Component = () => {
 
       <CommandPalette
         commands={commands()}
+        files={fileIndex.files().map((f) => {
+          const focused = ws.workspaces().find((w) => w.id === ws.selectedId())
+          return focused ? `${focused.cwd}/${f}` : f
+        })}
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
+        onOpenFile={(path) => {
+          layout.navigate("editor")
+          void mgr.open(path).catch((err) => {
+            toasts.error("Open failed", err instanceof Error ? err.message : String(err))
+          })
+        }}
       />
       <CrashBanner />
     </ErrorBoundary>
@@ -302,9 +326,13 @@ export const App: Component = () => {
       <ToastProvider>
         <WorkspaceProvider>
           <GitStatusProvider>
-            <EditorPanelProvider>
-              <Shell />
-            </EditorPanelProvider>
+            <FileIndexProvider>
+              <EditorPanelProvider>
+                <TerminalTabsProvider>
+                  <Shell />
+                </TerminalTabsProvider>
+              </EditorPanelProvider>
+            </FileIndexProvider>
           </GitStatusProvider>
         </WorkspaceProvider>
       </ToastProvider>

@@ -1,8 +1,10 @@
 import { type Component, Match, Show, Switch } from "solid-js"
 import { EditorPanel, useBufferManager } from "../../components/editor/editor-panel"
 import { ResizeHandle } from "../../components/resize-handle"
+import { useGitStatus } from "../../context/git-status"
 import { type CenterPage, useLayout } from "../../context/layout"
 import { useWorkspaces } from "../../context/workspace"
+import { BrowserPanel } from "../browser/browser-panel"
 import { GitPanel } from "../git"
 import { AddProjectForm } from "../onboarding/add-project"
 import { PrReviewPanel } from "../pr-review"
@@ -47,7 +49,7 @@ export const CenterPanel: Component = () => {
         </Match>
         <Match when={page() === "git"}>
           <PageWrap name="git">
-            <GitPanel files={[]} branch="main" />
+            <GitPanelWired />
           </PageWrap>
         </Match>
         <Match when={page() === "problems"}>
@@ -57,17 +59,22 @@ export const CenterPanel: Component = () => {
         </Match>
         <Match when={page() === "search"}>
           <PageWrap name="search">
-            <SearchPage />
+            <SearchPageWired />
           </PageWrap>
         </Match>
         <Match when={page() === "pr-review"}>
           <PageWrap name="pr-review">
-            <PrReviewPanel pr={null} />
+            <PrReviewWired />
           </PageWrap>
         </Match>
         <Match when={page() === "settings"}>
           <PageWrap name="settings">
             <SettingsPage onClose={() => layout.navigate("editor")} />
+          </PageWrap>
+        </Match>
+        <Match when={page() === "browser"}>
+          <PageWrap name="browser">
+            <BrowserPanel />
           </PageWrap>
         </Match>
       </Switch>
@@ -89,6 +96,47 @@ const PageWrap: Component<{ name: string; children: unknown }> = (props) => (
     {props.children as never}
   </div>
 )
+
+const SearchPageWired: Component = () => {
+  const ws = useWorkspaces()
+  const layout = useLayout()
+  const mgr = useBufferManager()
+  const focused = () => ws.workspaces().find((w) => w.id === ws.selectedId())
+  return (
+    <SearchPage
+      cwd={focused()?.cwd}
+      onOpenFile={(path, _line) => {
+        layout.navigate("editor")
+        void mgr.open(path).catch(() => {})
+      }}
+    />
+  )
+}
+
+const GitPanelWired: Component = () => {
+  const ws = useWorkspaces()
+  const git = useGitStatus()
+  const layout = useLayout()
+  const mgr = useBufferManager()
+  const focused = () => ws.workspaces().find((w) => w.id === ws.selectedId())
+  return (
+    <GitPanel
+      cwd={focused()?.cwd}
+      files={git.files()}
+      branch={focused()?.branch}
+      onOpenFile={(path) => {
+        layout.navigate("editor")
+        void mgr.open(path).catch(() => {})
+      }}
+    />
+  )
+}
+
+const PrReviewWired: Component = () => {
+  const ws = useWorkspaces()
+  const focused = () => ws.workspaces().find((w) => w.id === ws.selectedId())
+  return <PrReviewPanel cwd={focused()?.cwd} />
+}
 
 const EditorView: Component = () => {
   const ws = useWorkspaces()
