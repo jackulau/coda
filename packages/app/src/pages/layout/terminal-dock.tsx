@@ -1,4 +1,4 @@
-import { effectiveCursorBlink } from "@coda/core/terminal-settings/settings"
+import { effectiveCursorBlink, resolveStartupCommand } from "@coda/core/terminal-settings/settings"
 import { listen } from "@tauri-apps/api/event"
 import { FitAddon } from "@xterm/addon-fit"
 import { Terminal } from "@xterm/xterm"
@@ -75,6 +75,15 @@ export const TerminalDock: Component<{ onClose: () => void }> = (props) => {
       if (!sessionId) return
       void ptyResize(sessionId, rows, cols).catch(() => {})
     })
+
+    // Send startup command once per terminal open (not in a createEffect).
+    const rawCmd = settings().terminalStartupCommand
+    if (rawCmd) {
+      const resolved = resolveStartupCommand(rawCmd, settings().reducedMotion)
+      if (resolved.command) {
+        void ptyWrite(sessionId, resolved.command).catch(() => {})
+      }
+    }
   }
 
   onMount(() => {

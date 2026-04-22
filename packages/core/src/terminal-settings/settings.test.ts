@@ -78,7 +78,11 @@ describe("shouldWarnLargeScrollback", () => {
 
 describe("resolveStartupCommand", () => {
   test("empty stays empty", () => {
-    expect(resolveStartupCommand("", false).command).toBe("")
+    expect(resolveStartupCommand("", false)).toEqual({ command: "", delayMs: 0 })
+  })
+
+  test("whitespace-only treated as empty", () => {
+    expect(resolveStartupCommand("  ", false)).toEqual({ command: "", delayMs: 0 })
   })
 
   test("appends newline for execution", () => {
@@ -87,8 +91,19 @@ describe("resolveStartupCommand", () => {
     )
   })
 
+  test("ls -la gets trailing newline", () => {
+    expect(resolveStartupCommand("ls -la", false)).toEqual({ command: "ls -la\n", delayMs: 0 })
+  })
+
   test("preserves existing trailing newline without doubling", () => {
     expect(resolveStartupCommand("claude\n", false).command).toBe("claude\n")
+  })
+
+  test("echo hello with trailing newline preserved", () => {
+    expect(resolveStartupCommand("echo hello\n", false)).toEqual({
+      command: "echo hello\n",
+      delayMs: 0,
+    })
   })
 })
 
