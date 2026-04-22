@@ -8,7 +8,17 @@ describe("editor theme extension (D4)", () => {
     expect(p.accent).toBe("#ff7a1a")
   })
 
-  test("unknown theme id throws", () => {
-    expect(() => editorThemeFor("nope")).toThrow(/unknown theme/)
+  test("vesper theme returns correct palette", () => {
+    const p = editorThemeFor("vesper")
+    expect(p.background).toBe("#101010")
+    expect(p.foreground).toBe("#b0b0b0")
+    expect(p.accent).toBe("#FFC799")
+  })
+
+  test("unknown theme id falls back to vesper instead of throwing", () => {
+    const p = editorThemeFor("totally-unknown-theme")
+    expect(p.background).toBe("#101010")
+    expect(p.foreground).toBe("#b0b0b0")
+    expect(p.accent).toBe("#FFC799")
   })
 })
