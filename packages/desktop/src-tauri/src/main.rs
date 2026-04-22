@@ -1,6 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use coda_desktop_lib::{fs_commands, git_commands, pty, workspace_registry, AppState};
+use coda_desktop_lib::{
+    fs_commands, git_commands, pty, search_commands, workspace_registry, AppState,
+};
 
 #[tauri::command]
 fn ping() -> &'static str {
@@ -25,6 +27,11 @@ fn main() {
             fs_commands::read_text_file,
             fs_commands::write_text_file,
             git_commands::list_changed_files,
+            git_commands::list_all_files,
+            git_commands::get_file_diff,
+            git_commands::git_log,
+            git_commands::git_commit_diff,
+            search_commands::search_files,
             pty::pty_spawn,
             pty::pty_write,
             pty::pty_resize,

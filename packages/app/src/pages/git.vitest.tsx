@@ -1,15 +1,15 @@
-import type { GitFileStatus } from "@coda/core/git/status"
-import { cleanup, fireEvent, render } from "@solidjs/testing-library"
+import { cleanup, render } from "@solidjs/testing-library"
 import { afterEach, describe, expect, test } from "vitest"
+import type { ChangedFile } from "../lib/ipc"
 import { GitPanel } from "./git"
 
 afterEach(cleanup)
 
-const file: GitFileStatus = {
+const file: ChangedFile = {
   path: "src/a.ts",
-  index: "unmodified",
-  worktree: "modified",
-  conflict: false,
+  kind: "modify",
+  additions: 3,
+  deletions: 1,
 }
 
 describe("GitPanel (I3)", () => {
@@ -23,14 +23,8 @@ describe("GitPanel (I3)", () => {
     expect(container.querySelector("[data-testid='git-clean']")).toBeTruthy()
   })
 
-  test("renders one row per changed file + stage button fires onStage", () => {
-    const staged: string[] = []
-    const { container } = render(() => <GitPanel files={[file]} onStage={(p) => staged.push(p)} />)
+  test("renders one row per changed file", () => {
+    const { container } = render(() => <GitPanel files={[file]} />)
     expect(container.querySelector("[data-testid='git-file-src/a.ts']")).toBeTruthy()
-    const btn = container.querySelector(
-      "[data-testid='git-file-src/a.ts'] button",
-    ) as HTMLButtonElement
-    fireEvent.click(btn)
-    expect(staged).toEqual(["src/a.ts"])
   })
 })

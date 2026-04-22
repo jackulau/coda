@@ -1,5 +1,16 @@
-import { ArrowUp, FileDiff, FilePlus, FileX, GitPullRequestArrow, X } from "lucide-solid"
+import {
+  ArrowUp,
+  ChevronDown,
+  ChevronRight,
+  FileDiff,
+  FilePlus,
+  FileX,
+  GitPullRequestArrow,
+  X,
+} from "lucide-solid"
 import { type Component, For, Show, createMemo, createSignal } from "solid-js"
+import { DiffView } from "../../components/diff-view"
+import { getFileDiff } from "../../lib/ipc"
 
 export type ChangeKind = "add" | "modify" | "delete"
 
@@ -12,6 +23,7 @@ export interface ChangedFile {
 
 export interface ReviewChangesProps {
   files: ChangedFile[]
+  cwd?: string
   prNumber?: number
   onPush?: (commitMessage: string) => void
   onClose?: () => void
@@ -19,8 +31,30 @@ export interface ReviewChangesProps {
 
 export const ReviewChangesPanel: Component<ReviewChangesProps> = (props) => {
   const [message, setMessage] = createSignal("")
+  const [expandedFile, setExpandedFile] = createSignal<string | null>(null)
+  const [diffCache, setDiffCache] = createSignal<Record<string, string>>({})
+  const [loadingDiff, setLoadingDiff] = createSignal<string | null>(null)
   const grouped = createMemo(() => groupByDir(props.files))
   const canPush = () => props.files.length > 0
+
+  const toggleDiff = async (filePath: string) => {
+    if (expandedFile() === filePath) {
+      setExpandedFile(null)
+      return
+    }
+    setExpandedFile(filePath)
+    if (diffCache()[filePath]) return
+    if (!props.cwd) return
+    setLoadingDiff(filePath)
+    try {
+      const diff = await getFileDiff(props.cwd, filePath)
+      setDiffCache((prev) => ({ ...prev, [filePath]: diff }))
+    } catch {
+      setDiffCache((prev) => ({ ...prev, [filePath]: "" }))
+    } finally {
+      setLoadingDiff(null)
+    }
+  }
 
   return (
     <div
@@ -197,7 +231,32 @@ export const ReviewChangesPanel: Component<ReviewChangesProps> = (props) => {
                     {group.dir}
                   </div>
                 </Show>
-                <For each={group.files}>{(f) => <FileRow file={f} />}</For>
+                <For each={group.files}>
+                  {(f) => (
+                    <>
+                      <FileRow
+                        file={f}
+                        expanded={expandedFile() === f.path}
+                        loading={loadingDiff() === f.path}
+                        onClick={() => toggleDiff(f.path)}
+                      />
+                      <Show when={expandedFile() === f.path && diffCache()[f.path]}>
+                        <div
+                          style={{
+                            "margin-left": "4px",
+                            "margin-right": "4px",
+                            "margin-bottom": "8px",
+                            "border-radius": "4px",
+                            overflow: "hidden",
+                            border: "1px solid var(--border-subtle)",
+                          }}
+                        >
+                          <DiffView patch={diffCache()[f.path] ?? ""} />
+                        </div>
+                      </Show>
+                    </>
+                  )}
+                </For>
               </div>
             )}
           </For>
@@ -207,7 +266,12 @@ export const ReviewChangesPanel: Component<ReviewChangesProps> = (props) => {
   )
 }
 
-const FileRow: Component<{ file: ChangedFile }> = (p) => {
+const FileRow: Component<{
+  file: ChangedFile
+  expanded: boolean
+  loading: boolean
+  onClick: () => void
+}> = (p) => {
   const Glyph = p.file.kind === "add" ? FilePlus : p.file.kind === "delete" ? FileX : FileDiff
   const tone =
     p.file.kind === "add"
@@ -216,36 +280,49 @@ const FileRow: Component<{ file: ChangedFile }> = (p) => {
         ? "var(--diff-remove)"
         : "var(--text-secondary)"
   return (
-    <div
+    <button
+      type="button"
       class="coda-row-hover"
       data-testid={`review-file-row-${p.file.path}`}
+      onClick={p.onClick}
       style={{
+        width: "100%",
         display: "flex",
         "align-items": "center",
-        gap: "8px",
+        gap: "6px",
         padding: "3px 10px",
         "font-size": "12px",
         "border-radius": "3px",
+        background: p.expanded ? "var(--bg-2)" : "transparent",
+        border: "none",
+        color: "var(--text-primary)",
+        cursor: "pointer",
+        "text-align": "left",
       }}
     >
-      <Glyph size={13} style={{ color: tone, "flex-shrink": 0 }} aria-hidden="true" />
+      <span style={{ "flex-shrink": "0", color: "var(--text-tertiary)" }}>
+        {p.expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+      </span>
+      <Glyph size={13} style={{ color: tone, "flex-shrink": "0" }} aria-hidden="true" />
       <span
         style={{
           flex: "1 1 auto",
           "white-space": "nowrap",
           overflow: "hidden",
           "text-overflow": "ellipsis",
-          color: "var(--text-primary)",
         }}
       >
         {basename(p.file.path)}
       </span>
+      <Show when={p.loading}>
+        <span style={{ "font-size": "10px", color: "var(--text-tertiary)" }}>…</span>
+      </Show>
       <span
         style={{
           "font-family": "var(--font-mono)",
           "font-size": "10px",
           color: "var(--text-tertiary)",
-          "flex-shrink": 0,
+          "flex-shrink": "0",
         }}
       >
         <Show when={p.file.additions > 0}>
@@ -257,7 +334,7 @@ const FileRow: Component<{ file: ChangedFile }> = (p) => {
           </span>
         </Show>
       </span>
-    </div>
+    </button>
   )
 }
 

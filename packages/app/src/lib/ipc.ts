@@ -78,6 +78,31 @@ export function writeTextFile(
   return call<void>("write_text_file", args as unknown as Record<string, unknown>)
 }
 
+// --- file index ---------------------------------------------------------
+
+export function listAllFiles(cwd: string): Promise<string[]> {
+  return call<string[]>("list_all_files", { cwd })
+}
+
+// --- search -------------------------------------------------------------
+
+export interface SearchHit {
+  path: string
+  line: number
+  column: number
+  preview: string
+}
+
+export function searchFiles(
+  cwd: string,
+  query: string,
+  caseSensitive?: boolean,
+  regex?: boolean,
+): Promise<SearchHit[]> {
+  return call<SearchHit[]>("search_files", { cwd, query, caseSensitive, regex })
+}
+
+
 // --- git status ---------------------------------------------------------
 
 export type ChangeKind = "add" | "modify" | "delete"
@@ -92,6 +117,32 @@ export interface ChangedFile {
 export function listChangedFiles(cwd: string): Promise<ChangedFile[]> {
   return call<ChangedFile[]>("list_changed_files", { cwd })
 }
+
+export function getFileDiff(cwd: string, path: string): Promise<string> {
+  return call<string>("get_file_diff", { cwd, path })
+}
+
+// --- git log ------------------------------------------------------------
+
+export interface GitCommit {
+  hash: string
+  shortHash: string
+  author: string
+  date: string
+  message: string
+  filesChanged: number
+  additions: number
+  deletions: number
+}
+
+export function gitLog(cwd: string, limit?: number, path?: string): Promise<GitCommit[]> {
+  return call<GitCommit[]>("git_log", { cwd, limit, path })
+}
+
+export function gitCommitDiff(cwd: string, hash: string): Promise<string> {
+  return call<string>("git_commit_diff", { cwd, hash })
+}
+
 
 // --- pty ----------------------------------------------------------------
 

@@ -2,6 +2,7 @@ import type { Component } from "solid-js"
 import { ResizeHandle } from "../../components/resize-handle"
 import { useGitStatus } from "../../context/git-status"
 import { useLayout } from "../../context/layout"
+import { useWorkspaces } from "../../context/workspace"
 import { type ChangedFile as PanelChangedFile, ReviewChangesPanel } from "./review-changes"
 
 /**
@@ -16,6 +17,8 @@ import { type ChangedFile as PanelChangedFile, ReviewChangesPanel } from "./revi
 export const RightRail: Component = () => {
   const layout = useLayout()
   const git = useGitStatus()
+  const ws = useWorkspaces()
+  const focused = () => ws.workspaces().find((w) => w.id === ws.selectedId())
   return (
     <aside
       data-testid="right-rail"
@@ -43,6 +46,7 @@ export const RightRail: Component = () => {
       >
         <ReviewChangesPanel
           files={git.files() as unknown as PanelChangedFile[]}
+          cwd={focused()?.cwd}
           onClose={() => layout.toggleRightRail()}
         />
       </div>
