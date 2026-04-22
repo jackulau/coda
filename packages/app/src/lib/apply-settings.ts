@@ -57,6 +57,9 @@ export const DARK_VARS: Record<string, string> = {
   "--status-run": "#ff6b1a",
   "--status-await": "#e3b341",
   "--status-error": "#f85149",
+  "--motion-fast": "120ms cubic-bezier(0.2, 0, 0.2, 1)",
+  "--motion-base": "180ms cubic-bezier(0.2, 0, 0.2, 1)",
+  "--motion-slow": "280ms cubic-bezier(0.2, 0, 0.2, 1)",
   "--shadow-panel": "0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.25)",
 }
 
@@ -82,6 +85,9 @@ export const LIGHT_VARS: Record<string, string> = {
   "--status-run": "#ff6b1a",
   "--status-await": "#9a6700",
   "--status-error": "#cf222e",
+  "--motion-fast": "120ms cubic-bezier(0.2, 0, 0.2, 1)",
+  "--motion-base": "180ms cubic-bezier(0.2, 0, 0.2, 1)",
+  "--motion-slow": "280ms cubic-bezier(0.2, 0, 0.2, 1)",
   "--shadow-panel": "0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.05)",
 }
 
