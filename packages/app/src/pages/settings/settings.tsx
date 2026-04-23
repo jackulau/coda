@@ -8,7 +8,9 @@ import {
   Terminal as TerminalIcon,
   X,
 } from "lucide-solid"
-import { type Component, For, createSignal, onCleanup, onMount } from "solid-js"
+import { type Component, For, createEffect, createSignal, onCleanup, onMount } from "solid-js"
+import { setLocale, t } from "../../lib/i18n"
+import { useSettings } from "./settings-store"
 
 interface Props {
   /** Legacy hook used by existing tests; still fires when Git → Save is clicked. */
@@ -19,13 +21,13 @@ interface Props {
 
 type SectionId = "appearance" | "keyboard" | "terminal" | "updates" | "git" | "about"
 
-const SECTIONS: Array<{ id: SectionId; label: string; Icon: typeof Paintbrush }> = [
-  { id: "appearance", label: "Appearance", Icon: Paintbrush },
-  { id: "keyboard", label: "Keyboard", Icon: Keyboard },
-  { id: "terminal", label: "Terminal", Icon: TerminalIcon },
-  { id: "updates", label: "Updates", Icon: Download },
-  { id: "git", label: "Git", Icon: GitBranch },
-  { id: "about", label: "About", Icon: Info },
+const SECTIONS: Array<{ id: SectionId; i18nKey: string; Icon: typeof Paintbrush }> = [
+  { id: "appearance", i18nKey: "settings.appearance", Icon: Paintbrush },
+  { id: "keyboard", i18nKey: "settings.keyboard", Icon: Keyboard },
+  { id: "terminal", i18nKey: "settings.terminal", Icon: TerminalIcon },
+  { id: "updates", i18nKey: "settings.updates", Icon: Download },
+  { id: "git", i18nKey: "settings.git", Icon: GitBranch },
+  { id: "about", i18nKey: "settings.about", Icon: Info },
 ]
 
 // Lightweight localStorage-backed store — upgrade path to Tauri store is a
@@ -70,6 +72,10 @@ export const SettingsPage: Component<Props> = (props) => {
     setSettings(next)
     writeSettings(next)
   }
+
+  // Sync the i18n locale whenever the global language setting changes.
+  const globalSettings = useSettings()
+  createEffect(() => setLocale(globalSettings().language))
 
   // Escape closes the settings page when a close handler is provided.
   onMount(() => {
@@ -134,7 +140,7 @@ export const SettingsPage: Component<Props> = (props) => {
                 }}
               >
                 <s.Icon size={14} aria-hidden="true" />
-                <span>{s.label}</span>
+                <span>{t(s.i18nKey)}</span>
               </button>
             )
           }}
@@ -185,7 +191,7 @@ export const SettingsPage: Component<Props> = (props) => {
             }}
           >
             <X size={12} aria-hidden="true" />
-            <span>Close</span>
+            <span>{t("settings.close")}</span>
             <kbd
               style={{
                 "font-family": "var(--font-mono)",
@@ -201,13 +207,13 @@ export const SettingsPage: Component<Props> = (props) => {
           </button>
         )}
         <SectionPane id="appearance" active={active()}>
-          <SectionHeader icon={Paintbrush} title="Appearance" />
-          <Row label="Theme" description="Dark theme only for now. Light theme is on the roadmap.">
+          <SectionHeader icon={Paintbrush} title={t("settings.appearance")} />
+          <Row label={t("settings.theme")} description={t("settings.theme.description")}>
             <select data-testid="settings-theme" value="dark" disabled style={inputStyle}>
               <option value="dark">Dark</option>
             </select>
           </Row>
-          <Row label="UI font size" description="Applies to sidebar, panels, and menus.">
+          <Row label={t("settings.uiFontSize")} description={t("settings.uiFontSize.description")}>
             <input
               type="range"
               data-testid="settings-font-size"
@@ -221,8 +227,8 @@ export const SettingsPage: Component<Props> = (props) => {
             </span>
           </Row>
           <Row
-            label="Reduce motion"
-            description="Disable transitions and animations across the app."
+            label={t("settings.reducedMotion")}
+            description={t("settings.reducedMotion.description")}
           >
             <input
               type="checkbox"
@@ -234,15 +240,13 @@ export const SettingsPage: Component<Props> = (props) => {
         </SectionPane>
 
         <SectionPane id="keyboard" active={active()}>
-          <SectionHeader icon={Keyboard} title="Keyboard" />
-          <p style={descriptionStyle}>
-            Read-only shortcut reference. Rebinding lands in a later release.
-          </p>
+          <SectionHeader icon={Keyboard} title={t("settings.keyboard")} />
+          <p style={descriptionStyle}>{t("settings.keyboard.description")}</p>
           <ul data-testid="settings-shortcut-list" style={shortcutListStyle}>
             <For each={SHORTCUTS}>
               {(sc) => (
                 <li style={shortcutRowStyle}>
-                  <span>{sc.label}</span>
+                  <span>{t(sc.i18nKey)}</span>
                   <kbd style={kbdStyle}>{sc.combo}</kbd>
                 </li>
               )}
@@ -251,8 +255,11 @@ export const SettingsPage: Component<Props> = (props) => {
         </SectionPane>
 
         <SectionPane id="terminal" active={active()}>
-          <SectionHeader icon={TerminalIcon} title="Terminal" />
-          <Row label="Font size" description="Applies to all terminal panes.">
+          <SectionHeader icon={TerminalIcon} title={t("settings.terminal")} />
+          <Row
+            label={t("settings.terminalFontSize")}
+            description={t("settings.terminalFontSize.description")}
+          >
             <input
               type="range"
               data-testid="settings-terminal-font-size"
@@ -266,8 +273,8 @@ export const SettingsPage: Component<Props> = (props) => {
             </span>
           </Row>
           <Row
-            label="Default shell"
-            description="Leave empty to use the system default (SHELL env var on Unix, pwsh on Windows)."
+            label={t("settings.terminalShell")}
+            description={t("settings.terminalShell.description")}
           >
             <input
               type="text"
@@ -281,8 +288,11 @@ export const SettingsPage: Component<Props> = (props) => {
         </SectionPane>
 
         <SectionPane id="updates" active={active()}>
-          <SectionHeader icon={Download} title="Updates" />
-          <Row label="Channel" description="Stable is safer; beta gets features earlier.">
+          <SectionHeader icon={Download} title={t("settings.updates")} />
+          <Row
+            label={t("settings.updatesChannel")}
+            description={t("settings.updatesChannel.description")}
+          >
             <label style={radioLabelStyle}>
               <input
                 type="radio"
@@ -291,7 +301,7 @@ export const SettingsPage: Component<Props> = (props) => {
                 checked={settings().updatesChannel === "stable"}
                 onChange={() => update({ updatesChannel: "stable" })}
               />
-              Stable
+              {t("settings.updatesChannel.stable")}
             </label>
             <label style={{ ...radioLabelStyle, "margin-left": "16px" }}>
               <input
@@ -301,12 +311,12 @@ export const SettingsPage: Component<Props> = (props) => {
                 checked={settings().updatesChannel === "beta"}
                 onChange={() => update({ updatesChannel: "beta" })}
               />
-              Beta
+              {t("settings.updatesChannel.beta")}
             </label>
           </Row>
           <Row
-            label="Check for updates"
-            description="Runs immediately against the current channel."
+            label={t("settings.checkForUpdates")}
+            description={t("settings.checkForUpdates.description")}
           >
             <button
               type="button"
@@ -317,7 +327,7 @@ export const SettingsPage: Component<Props> = (props) => {
                 // For now, simulate a check by bouncing through localStorage so the
                 // timestamp is visible in About.
                 update({})
-                alert("No updates available. You are on the latest build.")
+                alert(t("settings.checkForUpdates.noUpdates"))
               }}
             >
               <BellRing
@@ -325,17 +335,14 @@ export const SettingsPage: Component<Props> = (props) => {
                 aria-hidden="true"
                 style={{ "vertical-align": "-2px", "margin-right": "6px" }}
               />
-              Check now
+              {t("settings.checkForUpdates.button")}
             </button>
           </Row>
         </SectionPane>
 
         <SectionPane id="git" active={active()}>
-          <SectionHeader icon={GitBranch} title="Git" />
-          <Row
-            label="GitHub personal access token"
-            description="Scopes needed: repo, read:org. Stored in local browser storage."
-          >
+          <SectionHeader icon={GitBranch} title={t("settings.git")} />
+          <Row label={t("settings.githubPat")} description={t("settings.githubPat.description")}>
             <PatField
               value={settings().githubPat}
               onSave={(token) => {
@@ -347,13 +354,13 @@ export const SettingsPage: Component<Props> = (props) => {
         </SectionPane>
 
         <SectionPane id="about" active={active()}>
-          <SectionHeader icon={Info} title="About" />
+          <SectionHeader icon={Info} title={t("settings.about")} />
           <div data-testid="settings-about" style={{ color: "var(--text-secondary)" }}>
             <div>
               Coda <strong data-testid="settings-about-version">v2.0.0-alpha.0</strong>
             </div>
             <div style={{ "margin-top": "8px", "font-size": "11px" }}>
-              Agent-native IDE built on Tauri 2 + SolidJS.
+              {t("settings.about.description")}
             </div>
           </div>
         </SectionPane>
@@ -434,21 +441,21 @@ const PatField: Component<{ value: string; onSave: (t: string) => void }> = (pro
         onClick={() => props.onSave(local())}
         style={{ "margin-left": "8px" }}
       >
-        Save
+        {t("settings.githubPat.save")}
       </button>
     </>
   )
 }
 
-const SHORTCUTS: Array<{ combo: string; label: string }> = [
-  { combo: "⌘P", label: "Command palette" },
-  { combo: "⌘,", label: "Open settings" },
-  { combo: "⌘O", label: "Open folder" },
-  { combo: "⌘S", label: "Save current tab" },
-  { combo: "⌘W", label: "Close current tab" },
-  { combo: "⌘B", label: "Toggle sidebar" },
-  { combo: "⌘⇧R", label: "Reveal in Finder" },
-  { combo: "⌘K ⌘F", label: "Search" },
+const SHORTCUTS: Array<{ combo: string; i18nKey: string }> = [
+  { combo: "⌘P", i18nKey: "settings.shortcut.commandPalette" },
+  { combo: "⌘,", i18nKey: "settings.shortcut.openSettings" },
+  { combo: "⌘O", i18nKey: "settings.shortcut.openFolder" },
+  { combo: "⌘S", i18nKey: "settings.shortcut.saveCurrentTab" },
+  { combo: "⌘W", i18nKey: "settings.shortcut.closeCurrentTab" },
+  { combo: "⌘B", i18nKey: "settings.shortcut.toggleSidebar" },
+  { combo: "⌘⇧R", i18nKey: "settings.shortcut.revealInFinder" },
+  { combo: "⌘K ⌘F", i18nKey: "settings.shortcut.search" },
 ]
 
 const inputStyle = {

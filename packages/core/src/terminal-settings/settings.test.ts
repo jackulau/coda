@@ -45,6 +45,14 @@ describe("mergeSettings", () => {
     expect(out.fontSize).toBe(18)
     expect(out.cursorStyle).toBe("bar")
   })
+
+  test("cursorStyle block preserves other fields", () => {
+    const out = mergeSettings(DEFAULT_TERMINAL_SETTINGS, { cursorStyle: "block" })
+    expect(out.cursorStyle).toBe("block")
+    expect(out.fontSize).toBe(14)
+    expect(out.scrollback).toBe(10_000)
+    expect(out.cursorBlink).toBe(false)
+  })
 })
 
 describe("applyScrollbackChange", () => {
@@ -70,7 +78,11 @@ describe("shouldWarnLargeScrollback", () => {
 
 describe("resolveStartupCommand", () => {
   test("empty stays empty", () => {
-    expect(resolveStartupCommand("", false).command).toBe("")
+    expect(resolveStartupCommand("", false)).toEqual({ command: "", delayMs: 0 })
+  })
+
+  test("whitespace-only treated as empty", () => {
+    expect(resolveStartupCommand("  ", false)).toEqual({ command: "", delayMs: 0 })
   })
 
   test("appends newline for execution", () => {
@@ -79,8 +91,19 @@ describe("resolveStartupCommand", () => {
     )
   })
 
+  test("ls -la gets trailing newline", () => {
+    expect(resolveStartupCommand("ls -la", false)).toEqual({ command: "ls -la\n", delayMs: 0 })
+  })
+
   test("preserves existing trailing newline without doubling", () => {
     expect(resolveStartupCommand("claude\n", false).command).toBe("claude\n")
+  })
+
+  test("echo hello with trailing newline preserved", () => {
+    expect(resolveStartupCommand("echo hello\n", false)).toEqual({
+      command: "echo hello\n",
+      delayMs: 0,
+    })
   })
 })
 

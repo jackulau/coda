@@ -1,13 +1,16 @@
+import { effectiveCursorBlink, resolveStartupCommand } from "@coda/core/terminal-settings/settings"
 import { listen } from "@tauri-apps/api/event"
 import { FitAddon } from "@xterm/addon-fit"
 import { Terminal } from "@xterm/xterm"
 import xtermCss from "@xterm/xterm/css/xterm.css?inline"
 import { TerminalSquare, X } from "lucide-solid"
-import { type Component, onCleanup, onMount } from "solid-js"
+import { type Component, createEffect, onCleanup, onMount } from "solid-js"
 import { ResizeHandle } from "../../components/resize-handle"
+import { terminalThemeFor } from "../../components/terminal/terminal-theme"
 import { useLayout } from "../../context/layout"
 import { useWorkspaces } from "../../context/workspace"
 import { ptyKill, ptyResize, ptySpawn, ptyWrite } from "../../lib/ipc"
+import { useSettings } from "../settings/settings-store"
 
 /**
  * Terminal dock — a bottom-docked panel toggled via the status-bar button or
@@ -20,6 +23,7 @@ import { ptyKill, ptyResize, ptySpawn, ptyWrite } from "../../lib/ipc"
  */
 export const TerminalDock: Component<{ onClose: () => void }> = (props) => {
   const layout = useLayout()
+  const settings = useSettings()
   const ws = useWorkspaces()
   let rootRef: HTMLElement | undefined
   let mountRef: HTMLDivElement | undefined
@@ -71,6 +75,15 @@ export const TerminalDock: Component<{ onClose: () => void }> = (props) => {
       if (!sessionId) return
       void ptyResize(sessionId, rows, cols).catch(() => {})
     })
+
+    // Send startup command once per terminal open (not in a createEffect).
+    const rawCmd = settings().terminalStartupCommand
+    if (rawCmd) {
+      const resolved = resolveStartupCommand(rawCmd, settings().reducedMotion)
+      if (resolved.command) {
+        void ptyWrite(sessionId, resolved.command).catch(() => {})
+      }
+    }
   }
 
   onMount(() => {
@@ -78,12 +91,13 @@ export const TerminalDock: Component<{ onClose: () => void }> = (props) => {
     if (!mountRef) return
     term = new Terminal({
       convertEol: true,
-      cursorBlink: true,
+      cursorBlink: effectiveCursorBlink(settings().terminalCursorBlink, settings().reducedMotion),
+      cursorStyle: settings().terminalCursorStyle,
+      scrollback: settings().terminalScrollback,
       fontFamily: "var(--font-mono), Menlo, Monaco, monospace",
       fontSize: 12,
       theme: {
-        background: "#0a0a0a",
-        foreground: "#e6e6e6",
+        ...terminalThemeFor(settings().theme),
         cursor: "#e6e6e6",
       },
     })
@@ -104,6 +118,18 @@ export const TerminalDock: Component<{ onClose: () => void }> = (props) => {
     resizeObs.observe(mountRef)
 
     void startPty()
+
+    createEffect(() => {
+      if (!term) return
+      const palette = terminalThemeFor(settings().theme)
+      term.options.theme = { ...term.options.theme, ...palette }
+      term.options.cursorStyle = settings().terminalCursorStyle
+      term.options.cursorBlink = effectiveCursorBlink(
+        settings().terminalCursorBlink,
+        settings().reducedMotion,
+      )
+      term.options.scrollback = settings().terminalScrollback
+    })
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return

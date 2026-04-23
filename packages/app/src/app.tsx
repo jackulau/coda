@@ -1,4 +1,11 @@
-import { type Component, ErrorBoundary, createSignal, onCleanup, onMount } from "solid-js"
+import {
+  type Component,
+  ErrorBoundary,
+  createEffect,
+  createSignal,
+  onCleanup,
+  onMount,
+} from "solid-js"
 import { CommandPalette, type PaletteCommand } from "./components/command-palette"
 import { CrashBanner } from "./components/crash-banner"
 import { EditorPanelProvider, useBufferManager } from "./components/editor/editor-panel"
@@ -10,6 +17,7 @@ import { LayoutProvider, useLayout } from "./context/layout"
 import { TerminalTabsProvider } from "./context/terminal-tabs"
 import { useToasts } from "./context/toasts"
 import { WorkspaceProvider, useWorkspaces } from "./context/workspace"
+import { applySettingsToDocument, centerOrder, sidebarOrder } from "./lib/apply-settings"
 import { revealInFinder } from "./lib/ipc"
 import { CenterPanel } from "./pages/layout/center-panel"
 import { RightRail } from "./pages/layout/right-rail"
@@ -17,6 +25,7 @@ import { Sidebar } from "./pages/layout/sidebar"
 import { StatusBar } from "./pages/layout/status-bar"
 import { TerminalDock } from "./pages/layout/terminal-dock"
 import { TitleBar } from "./pages/layout/title-bar"
+import { useSettings } from "./pages/settings/settings-store"
 
 const ShellStatusBar: Component = () => {
   const ws = useWorkspaces()
@@ -49,6 +58,15 @@ const Shell: Component = () => {
   const fileIndex = useFileIndex()
   const [paletteOpen, setPaletteOpen] = createSignal(false)
   const [sidebarVisible, setSidebarVisible] = createSignal(true)
+
+  const settings = useSettings()
+
+  // Apply document-level settings (color scheme, font, reduced motion)
+  // whenever the settings signal changes.
+  createEffect(() => {
+    const cleanup = applySettingsToDocument(settings())
+    if (cleanup) onCleanup(cleanup)
+  })
 
   const bridge = createShortcutBridge()
 
@@ -280,17 +298,37 @@ const Shell: Component = () => {
         }}
       >
         {sidebarVisible() && (
-          <ErrorBoundary fallback={(e) => <div>Sidebar crash: {String(e)}</div>}>
-            <Sidebar />
-          </ErrorBoundary>
+          <div
+            style={{
+              order: sidebarOrder(settings().sidebarPosition),
+              display: "flex",
+              "min-height": 0,
+            }}
+          >
+            <ErrorBoundary fallback={(e) => <div>Sidebar crash: {String(e)}</div>}>
+              <Sidebar />
+            </ErrorBoundary>
+          </div>
         )}
-        <ErrorBoundary fallback={(e) => <div>Center crash: {String(e)}</div>}>
-          <CenterPanel />
-        </ErrorBoundary>
-        {layout.state().rightRailVisible && (
-          <ErrorBoundary fallback={(e) => <div>Right-rail crash: {String(e)}</div>}>
-            <RightRail />
+        <div
+          style={{
+            order: centerOrder(settings().sidebarPosition),
+            display: "flex",
+            flex: "1 1 auto",
+            "min-height": 0,
+            "min-width": 0,
+          }}
+        >
+          <ErrorBoundary fallback={(e) => <div>Center crash: {String(e)}</div>}>
+            <CenterPanel />
           </ErrorBoundary>
+        </div>
+        {layout.state().rightRailVisible && (
+          <div style={{ order: 3, display: "flex", "min-height": 0 }}>
+            <ErrorBoundary fallback={(e) => <div>Right-rail crash: {String(e)}</div>}>
+              <RightRail />
+            </ErrorBoundary>
+          </div>
         )}
       </div>
       {layout.state().terminalVisible && (
