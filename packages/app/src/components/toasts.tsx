@@ -91,13 +91,19 @@ const ToastStack: Component = () => {
             <button
               type="button"
               data-testid={`toast-dismiss-${t.id}`}
-              onClick={() => ctx.dismiss(t.id)}
+              onClick={(e) => {
+                e.stopPropagation()
+                ctx.dismiss(t.id)
+              }}
               style={{
                 background: "transparent",
                 border: "none",
                 color: "var(--text-tertiary)",
                 cursor: "pointer",
-                "font-size": "12px",
+                "font-size": "14px",
+                "line-height": 1,
+                padding: "2px 6px",
+                "border-radius": "3px",
               }}
               aria-label={`Dismiss ${t.kind} notification: ${t.message}`}
             >

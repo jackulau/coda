@@ -23,6 +23,8 @@
   --motion-base: 180ms cubic-bezier(0.2, 0, 0.2, 1);
   --motion-slow: 280ms cubic-bezier(0.2, 0, 0.2, 1);
   --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.25);
+  --shadow-small: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-elev: 0 2px 4px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.45);
   --font-ui: "Inter var", -apple-system, "SF Pro Text", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
   color-scheme: dark;
@@ -128,13 +130,17 @@ button:focus-visible,
   background-color: var(--bg-2);
 }
 
-/* Close button on tabs, list items — hidden unless parent hovered or active. */
+/* Close button on tabs, list items — dim at rest so the affordance is
+ * always discoverable without dominating the row. Fully opaque on hover
+ * or when the parent is active. */
 .coda-hover-reveal {
-  opacity: 0;
+  opacity: 0.35;
   transition: opacity var(--motion-fast);
 }
 .coda-hover-parent:hover .coda-hover-reveal,
-.coda-hover-parent[data-active="true"] .coda-hover-reveal {
+.coda-hover-parent[data-active="true"] .coda-hover-reveal,
+.coda-hover-reveal:hover,
+.coda-hover-reveal:focus-visible {
   opacity: 1;
 }
 
@@ -220,4 +226,211 @@ button:focus-visible,
 .coda-resize-handle:focus-visible .coda-resize-grip,
 .coda-resize-handle[data-dragging="true"] .coda-resize-grip {
   opacity: 0.85;
+}
+
+/* Terminal-dock tab: colored per-agent underline when active. */
+.coda-term-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 6px 0 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border-right: 1px solid var(--border-subtle);
+  transition: background-color var(--motion-fast), color var(--motion-fast);
+}
+.coda-term-tab:hover {
+  background-color: var(--bg-2);
+  color: var(--text-primary);
+}
+.coda-term-tab[data-active="true"] {
+  background-color: var(--bg-0);
+  color: var(--text-primary);
+}
+.coda-term-tab[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background-color: var(--accent-500);
+}
+.coda-term-tab .coda-term-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  color: var(--text-tertiary);
+  opacity: 0.55;
+  transition: background-color var(--motion-fast), opacity var(--motion-fast);
+}
+.coda-term-tab:hover .coda-term-close,
+.coda-term-tab[data-active="true"] .coda-term-close {
+  opacity: 1;
+}
+.coda-term-tab .coda-term-close:hover {
+  background-color: var(--bg-3);
+  color: var(--text-primary);
+}
+
+.coda-agent-shortcut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0.4;
+  border-radius: 3px;
+  transition: opacity var(--motion-fast), background-color var(--motion-fast);
+}
+.coda-agent-shortcut:hover {
+  opacity: 1;
+  background-color: var(--bg-2);
+}
+
+/* Canvas mode — faint 20px dot grid that pans with the canvas transform. */
+.coda-term-canvas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background-color: #0a0a0a;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.coda-term-window {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-0);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  box-shadow: var(--shadow-elev);
+  overflow: hidden;
+}
+.coda-term-window[data-active="true"] {
+  border-color: var(--accent-500);
+}
+.coda-term-window-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 6px 0 10px;
+  background-color: var(--bg-1);
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: grab;
+  user-select: none;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.coda-term-window-header[data-dragging="true"] {
+  cursor: grabbing;
+}
+.coda-term-window-body {
+  flex: 1 1 auto;
+  position: relative;
+}
+.coda-term-resize-corner {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  background: linear-gradient(
+    135deg,
+    transparent 45%,
+    var(--border-emphasis) 45%,
+    var(--border-emphasis) 55%,
+    transparent 55%,
+    transparent 70%,
+    var(--border-emphasis) 70%,
+    var(--border-emphasis) 80%,
+    transparent 80%
+  );
+}
+
+/* Agent logo color accents used by both the launcher menu and the tab
+ * logo. Kept here so a single token drives the look across components. */
+.coda-agent-claude {
+  color: #ff7a1a;
+}
+.coda-agent-codex {
+  color: #d8d8e0;
+}
+.coda-agent-gemini {
+  color: #4285f4;
+}
+.coda-agent-cursor {
+  color: #d8d8e0;
+}
+.coda-agent-shell {
+  color: #98c379;
+}
+
+/* Popover menu used by the terminal "+" dropdown. */
+.coda-popover {
+  background-color: var(--bg-1);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  box-shadow: var(--shadow-elev);
+  padding: 4px;
+  min-width: 180px;
+  z-index: 30;
+}
+.coda-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  text-align: left;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.coda-popover-item:hover {
+  background-color: var(--bg-2);
+}
+
+@keyframes loading-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }

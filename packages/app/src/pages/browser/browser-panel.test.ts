@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { BrowserSettings } from "../../pages/settings/settings-store"
-import { visibleDevTabs } from "./browser-panel"
+import { type BrowserSettings, visibleDevTabs } from "../../pages/settings/settings-store"
 
 const defaults: BrowserSettings = {
   enabled: true,

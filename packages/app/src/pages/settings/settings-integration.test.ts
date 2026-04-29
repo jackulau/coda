@@ -9,13 +9,13 @@ import {
   sidebarOrder,
 } from "../../lib/apply-settings"
 import { setLocale, t } from "../../lib/i18n"
-import { visibleDevTabs } from "../../pages/browser/browser-panel"
 import {
   DEFAULT_SETTINGS,
   type SettingsState,
   THEME_OPTIONS,
   updateSettings,
   useSettings,
+  visibleDevTabs,
 } from "./settings-store"
 
 const STORAGE_KEY = "coda.settings.v1"

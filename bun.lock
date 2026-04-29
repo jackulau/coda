@@ -6,7 +6,8 @@
       "name": "coda",
       "devDependencies": {
         "@biomejs/biome": "^1.9.4",
-        "@biomejs/cli-darwin-x64": "1.9.4",
+        "@biomejs/cli-darwin-arm64": "1.9.4",
+        "@tauri-apps/cli-darwin-arm64": "2.10.1",
         "typescript": "^5.6.3",
       },
     },
