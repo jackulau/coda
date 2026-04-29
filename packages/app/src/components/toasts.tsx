@@ -1,5 +1,6 @@
 import { type Component, For, type JSX, Show } from "solid-js"
 import { ToastContext, createToastCtx, useToasts } from "../context/toasts"
+import { useSettings } from "../pages/settings/settings-store"
 
 export const ToastProvider: Component<{ children: JSX.Element }> = (props) => {
   const ctx = createToastCtx()
@@ -12,6 +13,8 @@ export const ToastProvider: Component<{ children: JSX.Element }> = (props) => {
 }
 
 function prefersReducedMotion(): boolean {
+  const settings = useSettings()
+  if (settings().reducedMotion) return true
   return (
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function" &&

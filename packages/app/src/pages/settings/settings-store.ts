@@ -15,6 +15,15 @@ export interface BrowserSettings {
   defaultUrl: string
 }
 
+export type DevTab = "console" | "network"
+
+export function visibleDevTabs(browser: BrowserSettings): DevTab[] {
+  const tabs: DevTab[] = []
+  if (browser.consolePanel) tabs.push("console")
+  if (browser.networkPanel) tabs.push("network")
+  return tabs
+}
+
 export type AppearanceMode = "system" | "light" | "dark"
 export type SidebarPosition = "left" | "right"
 export type CursorStyle = "bar" | "block" | "underline"
