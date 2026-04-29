@@ -1,77 +1,80 @@
 import {
-  BellRing,
-  Download,
-  GitBranch,
-  Info,
+  Globe,
   Keyboard,
+  Monitor,
   Paintbrush,
+  Settings2,
+  Shield,
+  Sparkles,
   Terminal as TerminalIcon,
   X,
 } from "lucide-solid"
-import { type Component, For, createSignal, onCleanup, onMount } from "solid-js"
+import { type Component, For, Show, createSignal, onCleanup, onMount } from "solid-js"
+import { AGENTS } from "../../components/agent-logos"
+import {
+  type AgentVisibility,
+  type AppearanceMode,
+  type BrowserSettings,
+  CURSOR_STYLE_OPTIONS,
+  type CursorStyle,
+  DEFAULT_SETTINGS,
+  FONT_OPTIONS,
+  type FontFamily,
+  LANGUAGE_OPTIONS,
+  type Language,
+  SCROLLBACK_OPTIONS,
+  type SettingsState,
+  type SidebarPosition,
+  THEME_OPTIONS,
+  type ThemeId,
+  updateAgents,
+  updateBrowser,
+  updateSettings,
+  useSettings,
+} from "./settings-store"
 
 interface Props {
-  /** Legacy hook used by existing tests; still fires when Git → Save is clicked. */
   onSavePat?: (token: string) => void
-  /** Called when the user clicks ×, presses Escape, or hits Cmd+W. */
   onClose?: () => void
 }
 
-type SectionId = "appearance" | "keyboard" | "terminal" | "updates" | "git" | "about"
+type SectionId =
+  | "general"
+  | "terminal"
+  | "browser"
+  | "shortcuts"
+  | "models"
+  | "providers"
+  | "permissions"
+  | "skills"
 
-const SECTIONS: Array<{ id: SectionId; label: string; Icon: typeof Paintbrush }> = [
-  { id: "appearance", label: "Appearance", Icon: Paintbrush },
-  { id: "keyboard", label: "Keyboard", Icon: Keyboard },
+interface NavItem {
+  id: SectionId
+  label: string
+  Icon: typeof Paintbrush
+}
+
+const DESKTOP_NAV: NavItem[] = [
+  { id: "general", label: "General", Icon: Settings2 },
   { id: "terminal", label: "Terminal", Icon: TerminalIcon },
-  { id: "updates", label: "Updates", Icon: Download },
-  { id: "git", label: "Git", Icon: GitBranch },
-  { id: "about", label: "About", Icon: Info },
+  { id: "browser", label: "Browser", Icon: Globe },
+  { id: "shortcuts", label: "Shortcuts", Icon: Keyboard },
 ]
 
-// Lightweight localStorage-backed store — upgrade path to Tauri store is a
-// swap of `read`/`write` in one place.
-const STORAGE_KEY = "coda.settings.v1"
-type SettingsState = {
-  fontSize: number
-  terminalFontSize: number
-  terminalShell: string
-  updatesChannel: "stable" | "beta"
-  reducedMotion: boolean
-  githubPat: string
-}
-const DEFAULT_SETTINGS: SettingsState = {
-  fontSize: 13,
-  terminalFontSize: 13,
-  terminalShell: "",
-  updatesChannel: "stable",
-  reducedMotion: false,
-  githubPat: "",
-}
-function readSettings(): SettingsState {
-  if (typeof localStorage === "undefined") return DEFAULT_SETTINGS
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return DEFAULT_SETTINGS
-    return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<SettingsState>) }
-  } catch {
-    return DEFAULT_SETTINGS
-  }
-}
-function writeSettings(next: SettingsState): void {
-  if (typeof localStorage === "undefined") return
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-}
+const SERVER_NAV: NavItem[] = [
+  { id: "models", label: "Models", Icon: Sparkles },
+  { id: "providers", label: "Providers", Icon: Monitor },
+  { id: "permissions", label: "Permissions", Icon: Shield },
+  { id: "skills", label: "Skills", Icon: Paintbrush },
+]
 
 export const SettingsPage: Component<Props> = (props) => {
-  const [active, setActive] = createSignal<SectionId>("appearance")
-  const [settings, setSettings] = createSignal<SettingsState>(readSettings())
-  const update = (patch: Partial<SettingsState>) => {
-    const next = { ...settings(), ...patch }
-    setSettings(next)
-    writeSettings(next)
-  }
+  const [active, setActive] = createSignal<SectionId>("general")
+  const settings = useSettings()
+  const update = (patch: Partial<SettingsState>) => updateSettings(patch)
+  const updateAgent = (patch: Partial<AgentVisibility>) => updateAgents(patch)
+  const updateBrowserSetting = (patch: Partial<BrowserSettings>) => updateBrowser(patch)
 
-  // Escape closes the settings page when a close handler is provided.
   onMount(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && props.onClose) {
@@ -94,150 +97,387 @@ export const SettingsPage: Component<Props> = (props) => {
         position: "relative",
       }}
     >
+      {/* ── Sidebar Nav ── */}
       <nav
         data-testid="settings-sections"
         aria-label="Settings sections"
         style={{
-          width: "220px",
-          "min-width": "220px",
+          width: "200px",
+          "min-width": "200px",
           "border-right": "1px solid var(--border-subtle)",
-          padding: "16px 0",
+          padding: "16px 0 16px",
           display: "flex",
           "flex-direction": "column",
-          gap: "2px",
           "background-color": "var(--bg-1)",
+          "justify-content": "space-between",
         }}
       >
-        <For each={SECTIONS}>
-          {(s) => {
-            const isActive = () => active() === s.id
-            return (
-              <button
-                type="button"
-                class="coda-row-hover"
-                data-testid={`settings-nav-${s.id}`}
-                data-active={isActive() ? "true" : "false"}
-                onClick={() => setActive(s.id)}
-                style={{
-                  display: "flex",
-                  "align-items": "center",
-                  gap: "10px",
-                  height: "32px",
-                  padding: "0 16px",
-                  "background-color": isActive() ? "var(--bg-2)" : "transparent",
-                  "border-left": `2px solid ${isActive() ? "var(--accent-500)" : "transparent"}`,
-                  color: isActive() ? "var(--text-primary)" : "var(--text-secondary)",
-                  "font-size": "13px",
-                  "text-align": "left",
-                  cursor: "pointer",
-                  border: "none",
-                }}
-              >
-                <s.Icon size={14} aria-hidden="true" />
-                <span>{s.label}</span>
-              </button>
-            )
+        <div>
+          <NavGroup label="Desktop" items={DESKTOP_NAV} active={active()} onSelect={setActive} />
+          <NavGroup label="Server" items={SERVER_NAV} active={active()} onSelect={setActive} />
+        </div>
+        <div
+          style={{
+            padding: "12px 16px",
+            "font-size": "11px",
+            color: "var(--text-tertiary)",
+            "line-height": "1.5",
           }}
-        </For>
+        >
+          <div>Codaa Desktop</div>
+          <div>v2.0.0-alpha.0</div>
+        </div>
       </nav>
 
+      {/* ── Main Content ── */}
       <section
         data-testid="settings-body"
         style={{
           flex: "1 1 auto",
-          padding: "24px 32px",
+          padding: "28px 36px",
           overflow: "auto",
-          "max-width": "720px",
+          "max-width": "760px",
           position: "relative",
         }}
       >
-        {props.onClose && (
-          <button
-            type="button"
-            data-testid="settings-close"
-            aria-label="Close settings"
-            title="Close settings (Esc)"
-            onClick={() => props.onClose?.()}
-            style={{
-              position: "absolute",
-              top: "16px",
-              right: "16px",
-              display: "inline-flex",
-              "align-items": "center",
-              "justify-content": "center",
-              gap: "6px",
-              padding: "6px 10px",
-              background: "transparent",
-              border: "1px solid var(--border-default)",
-              color: "var(--text-secondary)",
-              "border-radius": "6px",
-              "font-size": "11px",
-              cursor: "pointer",
-              transition: "background-color var(--motion-fast), color var(--motion-fast)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--bg-2)"
-              e.currentTarget.style.color = "var(--text-primary)"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent"
-              e.currentTarget.style.color = "var(--text-secondary)"
-            }}
-          >
-            <X size={12} aria-hidden="true" />
-            <span>Close</span>
-            <kbd
-              style={{
-                "font-family": "var(--font-mono)",
-                "font-size": "10px",
-                padding: "1px 4px",
-                "border-radius": "3px",
-                "background-color": "var(--bg-3)",
-                color: "var(--text-tertiary)",
-              }}
-            >
-              Esc
-            </kbd>
-          </button>
-        )}
-        <SectionPane id="appearance" active={active()}>
-          <SectionHeader icon={Paintbrush} title="Appearance" />
-          <Row label="Theme" description="Dark theme only for now. Light theme is on the roadmap.">
-            <select data-testid="settings-theme" value="dark" disabled style={inputStyle}>
-              <option value="dark">Dark</option>
-            </select>
-          </Row>
-          <Row label="UI font size" description="Applies to sidebar, panels, and menus.">
-            <input
-              type="range"
-              data-testid="settings-font-size"
-              min="11"
-              max="16"
-              value={settings().fontSize}
-              onInput={(e) => update({ fontSize: Number(e.currentTarget.value) })}
+        {/* ── General ── */}
+        <SectionPane id="general" active={active()}>
+          <SectionTitle>General</SectionTitle>
+          <GroupTitle>Appearance</GroupTitle>
+
+          <Row label="Language" description="Change the display language for Codaa">
+            <Select
+              testId="settings-language"
+              value={settings().language}
+              options={LANGUAGE_OPTIONS}
+              onChange={(v) => update({ language: v as Language })}
             />
-            <span style={{ "margin-left": "10px", color: "var(--text-secondary)" }}>
-              {settings().fontSize}px
-            </span>
           </Row>
+
+          <Row label="Appearance" description="Customise how Codaa looks on your device">
+            <Select
+              testId="settings-appearance"
+              value={settings().appearance}
+              options={[
+                { id: "system", label: "System" },
+                { id: "light", label: "Light" },
+                { id: "dark", label: "Dark" },
+              ]}
+              onChange={(v) => update({ appearance: v as AppearanceMode })}
+            />
+          </Row>
+
+          <Row label="Theme" description="Customise how Codaa is themed.">
+            <Select
+              testId="settings-theme"
+              value={settings().theme}
+              options={THEME_OPTIONS}
+              onChange={(v) => update({ theme: v as ThemeId })}
+            />
+          </Row>
+
+          <Row
+            label="Sidebar Position"
+            description="Choose which side to display the files and changes panel"
+          >
+            <Select
+              testId="settings-sidebar-position"
+              value={settings().sidebarPosition}
+              options={[
+                { id: "left", label: "Left" },
+                { id: "right", label: "Right" },
+              ]}
+              onChange={(v) => update({ sidebarPosition: v as SidebarPosition })}
+            />
+          </Row>
+
+          <Row label="Font" description="Customise the mono font used in code blocks">
+            <Select
+              testId="settings-font"
+              value={settings().fontFamily}
+              options={FONT_OPTIONS}
+              onChange={(v) => update({ fontFamily: v as FontFamily })}
+              mono
+            />
+          </Row>
+
+          <GroupTitle>Feed</GroupTitle>
+
+          <Row
+            label="Show reasoning summaries"
+            description="Display model reasoning summaries in the timeline"
+          >
+            <Toggle
+              testId="settings-reasoning"
+              checked={settings().showReasoningSummaries}
+              onChange={(v) => update({ showReasoningSummaries: v })}
+            />
+          </Row>
+
           <Row
             label="Reduce motion"
-            description="Disable transitions and animations across the app."
+            description="Disable transitions and animations across the app"
           >
-            <input
-              type="checkbox"
-              data-testid="settings-reduced-motion"
+            <Toggle
+              testId="settings-reduced-motion"
               checked={settings().reducedMotion}
-              onChange={(e) => update({ reducedMotion: e.currentTarget.checked })}
+              onChange={(v) => update({ reducedMotion: v })}
+            />
+          </Row>
+
+          <GroupTitle>Agents</GroupTitle>
+          <p style={hintStyle}>
+            Toggle which AI agents appear as quick-launch buttons in the terminal bar.
+          </p>
+          <div
+            style={{
+              display: "grid",
+              "grid-template-columns": "1fr 1fr",
+              gap: "8px",
+              "margin-top": "8px",
+            }}
+          >
+            <For each={AGENTS.filter((a) => a.kind !== "shell")}>
+              {(a) => {
+                const enabled = () =>
+                  settings().agents[a.kind as keyof AgentVisibility] ??
+                  DEFAULT_SETTINGS.agents[a.kind as keyof AgentVisibility]
+                return (
+                  <button
+                    type="button"
+                    data-testid={`settings-agent-${a.kind}`}
+                    onClick={() =>
+                      updateAgent({ [a.kind]: !enabled() } as Partial<AgentVisibility>)
+                    }
+                    style={{
+                      display: "flex",
+                      "align-items": "center",
+                      gap: "10px",
+                      padding: "10px 12px",
+                      "background-color": enabled() ? "var(--bg-2)" : "transparent",
+                      border: `1px solid ${enabled() ? "var(--accent-500)" : "var(--border-subtle)"}`,
+                      "border-radius": "6px",
+                      cursor: "pointer",
+                      transition: "all var(--motion-fast)",
+                      opacity: enabled() ? 1 : 0.5,
+                      color: "inherit",
+                    }}
+                  >
+                    <span class={a.className} style={{ display: "inline-flex", "font-size": "0" }}>
+                      <a.logo size={22} />
+                    </span>
+                    <div style={{ "text-align": "left" }}>
+                      <div
+                        style={{
+                          color: "var(--text-primary)",
+                          "font-size": "13px",
+                          "font-weight": "500",
+                        }}
+                      >
+                        {a.label}
+                      </div>
+                      <div
+                        style={{
+                          color: "var(--text-tertiary)",
+                          "font-size": "10px",
+                          "font-family": "var(--font-mono)",
+                        }}
+                      >
+                        {a.command}
+                      </div>
+                    </div>
+                  </button>
+                )
+              }}
+            </For>
+          </div>
+
+          <GroupTitle style={{ "margin-top": "28px" }}>Updates</GroupTitle>
+          <Row label="Channel" description="Stable is safer; beta gets features earlier.">
+            <Select
+              testId="settings-channel"
+              value={settings().updatesChannel}
+              options={[
+                { id: "stable", label: "Stable" },
+                { id: "beta", label: "Beta" },
+              ]}
+              onChange={(v) => update({ updatesChannel: v as "stable" | "beta" })}
+            />
+          </Row>
+
+          <GroupTitle style={{ "margin-top": "28px" }}>Git</GroupTitle>
+          <Row
+            label="GitHub personal access token"
+            description="Scopes needed: repo, read:org. Stored locally."
+          >
+            <PatField
+              value={settings().githubPat}
+              onSave={(token) => {
+                update({ githubPat: token })
+                props.onSavePat?.(token)
+              }}
             />
           </Row>
         </SectionPane>
 
-        <SectionPane id="keyboard" active={active()}>
-          <SectionHeader icon={Keyboard} title="Keyboard" />
-          <p style={descriptionStyle}>
-            Read-only shortcut reference. Rebinding lands in a later release.
+        {/* ── Terminal ── */}
+        <SectionPane id="terminal" active={active()}>
+          <SectionTitle>Terminal</SectionTitle>
+
+          <Row label="Font Size" description="The font size used in the terminal">
+            <Select
+              testId="settings-terminal-font-size"
+              value={String(settings().terminalFontSize)}
+              options={[11, 12, 13, 14, 15, 16].map((n) => ({
+                id: String(n),
+                label: `${n}px`,
+              }))}
+              onChange={(v) => update({ terminalFontSize: Number(v) })}
+            />
+          </Row>
+
+          <Row label="Cursor Style" description="The style of the terminal cursor">
+            <Select
+              testId="settings-cursor-style"
+              value={settings().terminalCursorStyle}
+              options={CURSOR_STYLE_OPTIONS}
+              onChange={(v) => update({ terminalCursorStyle: v as CursorStyle })}
+            />
+          </Row>
+
+          <Row label="Cursor Blink" description="Whether the terminal cursor blinks when focused">
+            <Toggle
+              testId="settings-cursor-blink"
+              checked={settings().terminalCursorBlink}
+              onChange={(v) => update({ terminalCursorBlink: v })}
+            />
+          </Row>
+
+          <Row
+            label="Scrollback"
+            description="Maximum number of lines stored in the terminal buffer"
+          >
+            <Select
+              testId="settings-scrollback"
+              value={String(settings().terminalScrollback)}
+              options={SCROLLBACK_OPTIONS.map((n) => ({
+                id: String(n),
+                label: n.toLocaleString(),
+              }))}
+              onChange={(v) => update({ terminalScrollback: Number(v) })}
+            />
+          </Row>
+
+          <Row
+            label="Default shell"
+            description="Leave empty to use the system default (SHELL env var on Unix, pwsh on Windows)."
+          >
+            <input
+              type="text"
+              data-testid="settings-terminal-shell"
+              placeholder="/bin/zsh"
+              value={settings().terminalShell}
+              onInput={(e) => update({ terminalShell: e.currentTarget.value })}
+              style={textInputStyle}
+            />
+          </Row>
+
+          <Row
+            label="Startup Command"
+            description="Command to run automatically when a new terminal is opened"
+          >
+            <input
+              type="text"
+              data-testid="settings-startup-command"
+              placeholder="claude --effort max"
+              value={settings().terminalStartupCommand}
+              onInput={(e) => update({ terminalStartupCommand: e.currentTarget.value })}
+              style={{ ...textInputStyle, "min-width": "220px" }}
+            />
+          </Row>
+
+          <Row
+            label="Canvas mode"
+            description="Turn the terminal dock into a pannable canvas with free-moving windows."
+          >
+            <Toggle
+              testId="settings-canvas-mode"
+              checked={settings().canvasMode}
+              onChange={(v) => update({ canvasMode: v })}
+            />
+          </Row>
+        </SectionPane>
+
+        {/* ── Browser ── */}
+        <SectionPane id="browser" active={active()}>
+          <SectionTitle>Browser</SectionTitle>
+
+          <Row
+            label="Enable Browser"
+            description="Show the integrated browser panel in the sandbox environment. Works with any website — no installation required."
+          >
+            <Toggle
+              testId="settings-browser-enabled"
+              checked={settings().browser.enabled}
+              onChange={(v) => updateBrowserSetting({ enabled: v })}
+            />
+          </Row>
+
+          <Row
+            label="Element Inspector"
+            description="Enable the element inspector tool for picking and inspecting elements on any page"
+          >
+            <Toggle
+              testId="settings-browser-inspector"
+              checked={settings().browser.elementInspector}
+              onChange={(v) => updateBrowserSetting({ elementInspector: v })}
+            />
+          </Row>
+
+          <Row label="Console Panel" description="Show captured console logs from browsed pages">
+            <Toggle
+              testId="settings-browser-console"
+              checked={settings().browser.consolePanel}
+              onChange={(v) => updateBrowserSetting({ consolePanel: v })}
+            />
+          </Row>
+
+          <Row
+            label="Network Panel"
+            description="Show captured network requests from browsed pages"
+          >
+            <Toggle
+              testId="settings-browser-network"
+              checked={settings().browser.networkPanel}
+              onChange={(v) => updateBrowserSetting({ networkPanel: v })}
+            />
+          </Row>
+
+          <Row
+            label="Default URL"
+            description="URL to load when opening the browser panel (leave empty for about:blank)"
+          >
+            <input
+              type="text"
+              data-testid="settings-browser-url"
+              placeholder="e.g. http://localhost:3000"
+              value={settings().browser.defaultUrl}
+              onInput={(e) => updateBrowserSetting({ defaultUrl: e.currentTarget.value })}
+              style={{ ...textInputStyle, "min-width": "240px" }}
+            />
+          </Row>
+
+          <GroupTitle style={{ "margin-top": "28px" }}>Design Mode</GroupTitle>
+          <p style={hintStyle}>
+            When enabled, agents can see your running app, inspect elements, and edit source code
+            directly from the browser panel. Changes appear instantly via HMR.
           </p>
+        </SectionPane>
+
+        {/* ── Shortcuts ── */}
+        <SectionPane id="shortcuts" active={active()}>
+          <SectionTitle>Shortcuts</SectionTitle>
+          <p style={hintStyle}>Read-only shortcut reference. Rebinding is on the roadmap.</p>
           <ul data-testid="settings-shortcut-list" style={shortcutListStyle}>
             <For each={SHORTCUTS}>
               {(sc) => (
@@ -250,117 +490,182 @@ export const SettingsPage: Component<Props> = (props) => {
           </ul>
         </SectionPane>
 
-        <SectionPane id="terminal" active={active()}>
-          <SectionHeader icon={TerminalIcon} title="Terminal" />
-          <Row label="Font size" description="Applies to all terminal panes.">
-            <input
-              type="range"
-              data-testid="settings-terminal-font-size"
-              min="11"
-              max="16"
-              value={settings().terminalFontSize}
-              onInput={(e) => update({ terminalFontSize: Number(e.currentTarget.value) })}
-            />
-            <span style={{ "margin-left": "10px", color: "var(--text-secondary)" }}>
-              {settings().terminalFontSize}px
-            </span>
-          </Row>
-          <Row
-            label="Default shell"
-            description="Leave empty to use the system default (SHELL env var on Unix, pwsh on Windows)."
-          >
-            <input
-              type="text"
-              data-testid="settings-terminal-shell"
-              placeholder="/bin/zsh"
-              value={settings().terminalShell}
-              onInput={(e) => update({ terminalShell: e.currentTarget.value })}
-              style={inputStyle}
-            />
-          </Row>
+        {/* ── Models ── */}
+        <SectionPane id="models" active={active()}>
+          <SectionTitle>Models</SectionTitle>
+          <p style={hintStyle}>
+            Configure which AI models each agent uses. Set default models, temperature, and context
+            window preferences per workspace.
+          </p>
+          <ComingSoonSection
+            icon={Sparkles}
+            title="Model configuration"
+            lines={[
+              "Choose default models for each agent (Claude, Codex, Gemini, Cursor)",
+              "Set temperature, max tokens, and context window per model",
+              "Compare model performance across your coding tasks",
+            ]}
+          />
         </SectionPane>
 
-        <SectionPane id="updates" active={active()}>
-          <SectionHeader icon={Download} title="Updates" />
-          <Row label="Channel" description="Stable is safer; beta gets features earlier.">
-            <label style={radioLabelStyle}>
-              <input
-                type="radio"
-                name="updates-channel"
-                data-testid="settings-channel-stable"
-                checked={settings().updatesChannel === "stable"}
-                onChange={() => update({ updatesChannel: "stable" })}
-              />
-              Stable
-            </label>
-            <label style={{ ...radioLabelStyle, "margin-left": "16px" }}>
-              <input
-                type="radio"
-                name="updates-channel"
-                data-testid="settings-channel-beta"
-                checked={settings().updatesChannel === "beta"}
-                onChange={() => update({ updatesChannel: "beta" })}
-              />
-              Beta
-            </label>
-          </Row>
-          <Row
-            label="Check for updates"
-            description="Runs immediately against the current channel."
-          >
-            <button
-              type="button"
-              class="coda-btn-primary"
-              data-testid="settings-check-updates"
-              onClick={() => {
-                // Non-blocking: surface feedback via the toast system in a later pass.
-                // For now, simulate a check by bouncing through localStorage so the
-                // timestamp is visible in About.
-                update({})
-                alert("No updates available. You are on the latest build.")
-              }}
-            >
-              <BellRing
-                size={14}
-                aria-hidden="true"
-                style={{ "vertical-align": "-2px", "margin-right": "6px" }}
-              />
-              Check now
-            </button>
-          </Row>
+        {/* ── Providers ── */}
+        <SectionPane id="providers" active={active()}>
+          <SectionTitle>Providers</SectionTitle>
+          <p style={hintStyle}>
+            Manage API providers and their credentials. Bring your own keys or connect through
+            OAuth.
+          </p>
+          <ComingSoonSection
+            icon={Monitor}
+            title="Provider management"
+            lines={[
+              "Add API keys for Anthropic, OpenAI, Google, and more",
+              "OAuth-based authentication for supported providers",
+              "Usage tracking and rate-limit monitoring per provider",
+            ]}
+          />
         </SectionPane>
 
-        <SectionPane id="git" active={active()}>
-          <SectionHeader icon={GitBranch} title="Git" />
-          <Row
-            label="GitHub personal access token"
-            description="Scopes needed: repo, read:org. Stored in local browser storage."
-          >
-            <PatField
-              value={settings().githubPat}
-              onSave={(token) => {
-                update({ githubPat: token })
-                props.onSavePat?.(token)
-              }}
-            />
-          </Row>
+        {/* ── Permissions ── */}
+        <SectionPane id="permissions" active={active()}>
+          <SectionTitle>Permissions</SectionTitle>
+          <p style={hintStyle}>
+            Control what the coding agent is allowed to do — file access, terminal commands, and
+            network calls.
+          </p>
+          <ComingSoonSection
+            icon={Shield}
+            title="Permission controls"
+            lines={[
+              "Allow or deny file read/write by path pattern",
+              "Restrict terminal commands and executables",
+              "Control network access and allowed domains",
+            ]}
+          />
         </SectionPane>
 
-        <SectionPane id="about" active={active()}>
-          <SectionHeader icon={Info} title="About" />
-          <div data-testid="settings-about" style={{ color: "var(--text-secondary)" }}>
-            <div>
-              Coda <strong data-testid="settings-about-version">v2.0.0-alpha.0</strong>
-            </div>
-            <div style={{ "margin-top": "8px", "font-size": "11px" }}>
-              Agent-native IDE built on Tauri 2 + SolidJS.
-            </div>
-          </div>
+        {/* ── Skills ── */}
+        <SectionPane id="skills" active={active()}>
+          <SectionTitle>Skills</SectionTitle>
+          <p style={hintStyle}>
+            Browse and manage reusable skills the coding agent can invoke — linting, testing,
+            deploying, and more.
+          </p>
+          <ComingSoonSection
+            icon={Paintbrush}
+            title="Skill registry"
+            lines={[
+              "Discover built-in skills for common workflows",
+              "Create custom skills from prompts or scripts",
+              "Enable or disable skills per workspace",
+            ]}
+          />
         </SectionPane>
       </section>
+
+      {/* ── Close Button ── */}
+      <Show when={props.onClose}>
+        <button
+          type="button"
+          data-testid="settings-close"
+          aria-label="Close settings"
+          title="Close settings (Esc)"
+          onClick={() => props.onClose?.()}
+          style={{
+            position: "absolute",
+            top: "12px",
+            right: "12px",
+            display: "inline-flex",
+            "align-items": "center",
+            "justify-content": "center",
+            width: "28px",
+            height: "28px",
+            background: "transparent",
+            border: "1px solid var(--border-default)",
+            color: "var(--text-secondary)",
+            "border-radius": "6px",
+            cursor: "pointer",
+            transition: "background-color var(--motion-fast), color var(--motion-fast)",
+            "z-index": "10",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "var(--bg-2)"
+            e.currentTarget.style.color = "var(--text-primary)"
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent"
+            e.currentTarget.style.color = "var(--text-secondary)"
+          }}
+        >
+          <X size={14} aria-hidden="true" />
+        </button>
+      </Show>
     </div>
   )
 }
+
+/* ─────────────────────── Shared Subcomponents ─────────────────────── */
+
+const NavGroup: Component<{
+  label: string
+  items: NavItem[]
+  active: SectionId
+  onSelect: (id: SectionId) => void
+}> = (props) => (
+  <div style={{ "margin-bottom": "8px" }}>
+    <div
+      style={{
+        padding: "6px 16px",
+        "font-size": "10px",
+        "font-weight": "600",
+        "text-transform": "uppercase",
+        "letter-spacing": "0.05em",
+        color: "var(--text-tertiary)",
+        "margin-top": "8px",
+      }}
+    >
+      {props.label}
+    </div>
+    <For each={props.items}>
+      {(item) => {
+        const isActive = () => props.active === item.id
+        return (
+          <button
+            type="button"
+            data-testid={`settings-nav-${item.id}`}
+            data-active={isActive() ? "true" : "false"}
+            onClick={() => props.onSelect(item.id)}
+            style={{
+              display: "flex",
+              "align-items": "center",
+              gap: "10px",
+              width: "100%",
+              height: "32px",
+              padding: "0 16px",
+              "background-color": isActive() ? "var(--bg-2)" : "transparent",
+              border: "none",
+              color: isActive() ? "var(--text-primary)" : "var(--text-secondary)",
+              "font-size": "13px",
+              "text-align": "left",
+              cursor: "pointer",
+              transition: "background-color var(--motion-fast)",
+              "border-radius": "0",
+            }}
+            onMouseEnter={(e) => {
+              if (!isActive()) e.currentTarget.style.backgroundColor = "var(--bg-2)"
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive()) e.currentTarget.style.backgroundColor = "transparent"
+            }}
+          >
+            <item.Icon size={14} aria-hidden="true" />
+            <span>{item.label}</span>
+          </button>
+        )
+      }}
+    </For>
+  </div>
+)
 
 const SectionPane: Component<{ id: SectionId; active: SectionId; children: unknown }> = (props) => (
   <div
@@ -371,74 +676,197 @@ const SectionPane: Component<{ id: SectionId; active: SectionId; children: unkno
   </div>
 )
 
-const SectionHeader: Component<{ icon: typeof Paintbrush; title: string }> = (props) => (
+const SectionTitle: Component<{ children: unknown }> = (props) => (
   <h2
     style={{
-      display: "flex",
-      "align-items": "center",
-      gap: "8px",
-      margin: "0 0 16px",
-      "font-size": "16px",
+      margin: "0 0 20px",
+      "font-size": "20px",
       "font-weight": 600,
       color: "var(--text-primary)",
     }}
   >
-    <props.icon size={18} aria-hidden="true" />
-    {props.title}
+    {props.children as never}
   </h2>
 )
 
-const Row: Component<{ label: string; description?: string; children: unknown }> = (props) => (
-  <div
+const GroupTitle: Component<{ children: unknown; style?: Record<string, string> }> = (props) => (
+  <h3
     style={{
-      display: "flex",
-      "flex-direction": "column",
-      gap: "8px",
-      padding: "12px 0",
-      "border-bottom": "1px solid var(--border-subtle)",
+      margin: "24px 0 12px",
+      "font-size": "14px",
+      "font-weight": 600,
+      color: "var(--text-primary)",
+      ...(props.style ?? {}),
     }}
   >
-    <div
+    {props.children as never}
+  </h3>
+)
+
+const Row: Component<{ label: string; description?: string; children: unknown }> = (props) => (
+  <div style={rowStyle}>
+    <div style={{ flex: "1 1 0", "min-width": 0 }}>
+      <div style={{ color: "var(--text-primary)", "font-size": "13px" }}>{props.label}</div>
+      <Show when={props.description}>
+        <div style={descriptionStyle}>{props.description}</div>
+      </Show>
+    </div>
+    <div style={{ display: "flex", "align-items": "center", "flex-shrink": 0 }}>
+      {props.children as never}
+    </div>
+  </div>
+)
+
+const Select: Component<{
+  testId: string
+  value: string
+  options: Array<{ id: string; label: string }>
+  onChange: (value: string) => void
+  mono?: boolean
+}> = (props) => (
+  <select
+    data-testid={props.testId}
+    value={props.value}
+    onChange={(e) => props.onChange(e.currentTarget.value)}
+    style={{
+      ...selectStyle,
+      "font-family": props.mono ? "var(--font-mono)" : "var(--font-ui)",
+    }}
+  >
+    <For each={props.options}>{(opt) => <option value={opt.id}>{opt.label}</option>}</For>
+  </select>
+)
+
+const Toggle: Component<{
+  testId: string
+  checked: boolean
+  onChange: (v: boolean) => void
+}> = (props) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={props.checked}
+    data-testid={props.testId}
+    onClick={() => props.onChange(!props.checked)}
+    style={{
+      position: "relative",
+      width: "36px",
+      height: "20px",
+      "border-radius": "10px",
+      border: "none",
+      "background-color": props.checked ? "var(--accent-500)" : "var(--bg-3)",
+      cursor: "pointer",
+      transition: "background-color var(--motion-fast)",
+      padding: 0,
+      "flex-shrink": "0",
+    }}
+  >
+    <span
       style={{
+        position: "absolute",
+        top: "2px",
+        left: props.checked ? "18px" : "2px",
+        width: "16px",
+        height: "16px",
+        "border-radius": "50%",
+        "background-color": "#fff",
+        transition: "left var(--motion-fast)",
+        "box-shadow": "0 1px 3px rgba(0,0,0,0.3)",
+      }}
+    />
+  </button>
+)
+
+const ComingSoonSection: Component<{
+  icon: typeof Sparkles
+  title: string
+  lines: string[]
+}> = (props) => (
+  <div
+    style={{
+      padding: "24px",
+      "border-radius": "8px",
+      border: "1px solid var(--border-subtle)",
+      "background-color": "var(--bg-1)",
+    }}
+  >
+    <div style={{ display: "flex", "align-items": "center", gap: "10px", "margin-bottom": "16px" }}>
+      <div
+        style={{
+          width: "32px",
+          height: "32px",
+          "border-radius": "8px",
+          "background-color": "var(--bg-3)",
+          display: "flex",
+          "align-items": "center",
+          "justify-content": "center",
+          color: "var(--text-tertiary)",
+        }}
+      >
+        <props.icon size={16} />
+      </div>
+      <div>
+        <div style={{ color: "var(--text-primary)", "font-size": "13px", "font-weight": "500" }}>
+          {props.title}
+        </div>
+        <div
+          style={{
+            color: "var(--accent-500)",
+            "font-size": "10px",
+            "font-weight": "600",
+            "text-transform": "uppercase",
+            "letter-spacing": "0.05em",
+          }}
+        >
+          Coming soon
+        </div>
+      </div>
+    </div>
+    <ul
+      style={{
+        margin: 0,
+        "padding-left": "20px",
         display: "flex",
-        "align-items": "center",
-        "justify-content": "space-between",
-        gap: "16px",
+        "flex-direction": "column",
+        gap: "6px",
       }}
     >
-      <div>
-        <div style={{ color: "var(--text-primary)", "font-size": "13px" }}>{props.label}</div>
-        <div style={descriptionStyle}>{props.description}</div>
-      </div>
-      <div style={{ display: "flex", "align-items": "center" }}>{props.children as never}</div>
-    </div>
+      <For each={props.lines}>
+        {(line) => (
+          <li style={{ color: "var(--text-secondary)", "font-size": "12px", "line-height": "1.5" }}>
+            {line}
+          </li>
+        )}
+      </For>
+    </ul>
   </div>
 )
 
 const PatField: Component<{ value: string; onSave: (t: string) => void }> = (props) => {
   const [local, setLocal] = createSignal(props.value)
   return (
-    <>
+    <div style={{ display: "flex", "align-items": "center", gap: "8px" }}>
       <input
         type="password"
         data-testid="settings-pat-input"
         placeholder="ghp_****"
         value={local()}
         onInput={(e) => setLocal(e.currentTarget.value)}
-        style={{ ...inputStyle, "min-width": "240px" }}
+        style={{ ...textInputStyle, "min-width": "200px" }}
       />
       <button
         type="button"
         class="coda-btn-primary"
         data-testid="settings-save-pat"
         onClick={() => props.onSave(local())}
-        style={{ "margin-left": "8px" }}
       >
         Save
       </button>
-    </>
+    </div>
   )
 }
+
+/* ─────────────────────── Data ─────────────────────── */
 
 const SHORTCUTS: Array<{ combo: string; label: string }> = [
   { combo: "⌘P", label: "Command palette" },
@@ -447,32 +875,68 @@ const SHORTCUTS: Array<{ combo: string; label: string }> = [
   { combo: "⌘S", label: "Save current tab" },
   { combo: "⌘W", label: "Close current tab" },
   { combo: "⌘B", label: "Toggle sidebar" },
+  { combo: "⌘`", label: "Toggle terminal" },
+  { combo: "⌘J", label: "Toggle terminal" },
   { combo: "⌘⇧R", label: "Reveal in Finder" },
   { combo: "⌘K ⌘F", label: "Search" },
 ]
 
-const inputStyle = {
+/* ─────────────────────── Styles ─────────────────────── */
+
+const rowStyle = {
+  display: "flex",
+  "align-items": "center",
+  "justify-content": "space-between",
+  gap: "24px",
+  padding: "12px 0",
+  "border-bottom": "1px solid var(--border-subtle)",
+} as const
+
+const selectStyle = {
   "background-color": "var(--bg-input)",
   color: "var(--text-primary)",
   border: "1px solid var(--border-default)",
-  "border-radius": "4px",
-  padding: "6px 8px",
-  "font-size": "12px",
-  "font-family": "var(--font-ui)",
+  "border-radius": "6px",
+  padding: "6px 28px 6px 10px",
+  "font-size": "13px",
+  "min-width": "140px",
+  cursor: "pointer",
+  appearance: "none" as const,
+  "background-image": `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a9aa6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E%3C/svg%3E")`,
+  "background-repeat": "no-repeat",
+  "background-position": "right 8px center",
+} as const
+
+const textInputStyle = {
+  "background-color": "var(--bg-input)",
+  color: "var(--text-primary)",
+  border: "1px solid var(--border-default)",
+  "border-radius": "6px",
+  padding: "6px 10px",
+  "font-size": "13px",
+  "font-family": "var(--font-mono)",
+  "min-width": "180px",
 } as const
 
 const descriptionStyle = {
   color: "var(--text-tertiary)",
   "font-size": "11px",
-  "line-height": 1.45,
+  "line-height": "1.45",
   "margin-top": "2px",
+} as const
+
+const hintStyle = {
+  color: "var(--text-tertiary)",
+  "font-size": "12px",
+  "line-height": "1.5",
+  margin: "0 0 16px",
 } as const
 
 const shortcutListStyle = {
   display: "flex",
   "flex-direction": "column",
-  gap: "4px",
-  "padding-left": 0,
+  gap: "0",
+  "padding-left": "0",
   "list-style": "none",
   margin: "12px 0 0",
 } as const
@@ -481,29 +945,20 @@ const shortcutRowStyle = {
   display: "flex",
   "justify-content": "space-between",
   "align-items": "center",
-  padding: "6px 0",
+  padding: "8px 0",
   "border-bottom": "1px solid var(--border-subtle)",
   color: "var(--text-secondary)",
-  "font-size": "12px",
+  "font-size": "13px",
 } as const
 
 const kbdStyle = {
   "background-color": "var(--bg-2)",
   border: "1px solid var(--border-default)",
   "border-radius": "4px",
-  padding: "1px 6px",
-  "font-size": "11px",
+  padding: "2px 8px",
+  "font-size": "12px",
   "font-family": "var(--font-mono)",
   color: "var(--text-primary)",
 } as const
 
-const radioLabelStyle = {
-  display: "inline-flex",
-  "align-items": "center",
-  gap: "6px",
-  color: "var(--text-secondary)",
-  "font-size": "12px",
-} as const
-
-// Unused helper kept to silence tree-shaking hints in tests that import the module.
-export const _settingsInternals = { readSettings, writeSettings, DEFAULT_SETTINGS }
+export { DEFAULT_SETTINGS, updateSettings, useSettings } from "./settings-store"

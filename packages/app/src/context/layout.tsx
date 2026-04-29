@@ -12,6 +12,7 @@ export type CenterPage =
   | "search"
   | "pr-review"
   | "settings"
+  | "browser"
 
 export interface LayoutState {
   sidebarWidth: number

@@ -102,7 +102,6 @@ export function searchFiles(
   return call<SearchHit[]>("search_files", { cwd, query, caseSensitive, regex })
 }
 
-
 // --- git status ---------------------------------------------------------
 
 export type ChangeKind = "add" | "modify" | "delete"
@@ -142,7 +141,6 @@ export function gitLog(cwd: string, limit?: number, path?: string): Promise<GitC
 export function gitCommitDiff(cwd: string, hash: string): Promise<string> {
   return call<string>("git_commit_diff", { cwd, hash })
 }
-
 
 // --- pty ----------------------------------------------------------------
 
