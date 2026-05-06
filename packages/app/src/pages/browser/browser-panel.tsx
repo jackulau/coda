@@ -18,6 +18,8 @@ import { useSettings } from "../settings/settings-store"
 
 type DevTab = "console" | "network" | "elements"
 
+const MAX_LOG_ENTRIES = 1000
+
 export const BrowserPanel: Component = () => {
   const settings = useSettings()
   const [url, setUrl] = createSignal(settings().browser.defaultUrl || "about:blank")
@@ -38,21 +40,31 @@ export const BrowserPanel: Component = () => {
     const handler = (e: MessageEvent) => {
       if (!e.data || e.data.source !== "codaa-devtools") return
       if (e.data.type === "console") {
-        setConsoleLogs((prev) => [
-          ...prev,
-          { level: e.data.level ?? "log", message: String(e.data.message), timestamp: Date.now() },
-        ])
+        setConsoleLogs((prev) => {
+          const next = [
+            ...prev,
+            {
+              level: e.data.level ?? "log",
+              message: String(e.data.message),
+              timestamp: Date.now(),
+            },
+          ]
+          return next.length > MAX_LOG_ENTRIES ? next.slice(-MAX_LOG_ENTRIES) : next
+        })
       } else if (e.data.type === "network") {
-        setNetworkRequests((prev) => [
-          ...prev,
-          {
-            method: e.data.method ?? "GET",
-            url: String(e.data.url),
-            status: e.data.status ?? 0,
-            time: e.data.time ?? 0,
-            timestamp: Date.now(),
-          },
-        ])
+        setNetworkRequests((prev) => {
+          const next = [
+            ...prev,
+            {
+              method: e.data.method ?? "GET",
+              url: String(e.data.url),
+              status: e.data.status ?? 0,
+              time: e.data.time ?? 0,
+              timestamp: Date.now(),
+            },
+          ]
+          return next.length > MAX_LOG_ENTRIES ? next.slice(-MAX_LOG_ENTRIES) : next
+        })
       }
     }
     window.addEventListener("message", handler)
