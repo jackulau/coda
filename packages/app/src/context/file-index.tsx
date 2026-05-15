@@ -2,6 +2,7 @@ import {
   type Component,
   type JSX,
   createContext,
+  createEffect,
   createSignal,
   onCleanup,
   onMount,
@@ -18,11 +19,14 @@ interface FileIndexCtx {
 
 const Ctx = createContext<FileIndexCtx>()
 
+const RELOAD_DEBOUNCE_MS = 250
+
 export const FileIndexProvider: Component<{ children: JSX.Element }> = (props) => {
   const ws = useWorkspaces()
   const [files, setFiles] = createSignal<string[]>([])
   const [loading, setLoading] = createSignal(false)
   let lastCwd = ""
+  let reloadTimer: ReturnType<typeof setTimeout> | undefined
 
   const load = () => {
     const focused = ws.workspaces().find((w) => w.id === ws.selectedId())
@@ -40,15 +44,32 @@ export const FileIndexProvider: Component<{ children: JSX.Element }> = (props) =
       .finally(() => setLoading(false))
   }
 
+  const scheduleLoad = () => {
+    if (reloadTimer !== undefined) clearTimeout(reloadTimer)
+    reloadTimer = setTimeout(() => {
+      reloadTimer = undefined
+      load()
+    }, RELOAD_DEBOUNCE_MS)
+  }
+
+  // React to workspace switches (debounced so rapid sidebar churn doesn't
+  // spam the filesystem walk).
+  createEffect(() => {
+    ws.selectedId()
+    scheduleLoad()
+  })
+
   onMount(() => {
-    load()
     const interval = setInterval(load, 30_000)
-    onCleanup(() => clearInterval(interval))
+    onCleanup(() => {
+      clearInterval(interval)
+      if (reloadTimer !== undefined) clearTimeout(reloadTimer)
+    })
   })
 
   const refresh = () => {
     lastCwd = ""
-    load()
+    scheduleLoad()
   }
 
   const ctx: FileIndexCtx = { files, loading, refresh }

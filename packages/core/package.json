@@ -14,6 +14,7 @@
     "./port": "./src/port/index.ts",
     "./protocol": "./src/protocol/index.ts",
     "./resource": "./src/resource/registry.ts",
+    "./agent-queue": "./src/agent-queue/index.ts",
     "./terminal-settings/*": "./src/terminal-settings/*.ts",
     "./problems/*": "./src/problems/*.ts",
     "./git/*": "./src/git/*.ts",

@@ -27,6 +27,7 @@
   --shadow-elev: 0 2px 4px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.45);
   --font-ui: "Inter var", -apple-system, "SF Pro Text", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  --font-size-base: 13px;
   color-scheme: dark;
 }
 
@@ -42,7 +43,7 @@ body {
   background: var(--bg-0);
   color: var(--text-primary);
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: var(--font-size-base);
   line-height: 1.45;
   overflow: hidden;
 }
@@ -116,10 +117,29 @@ button:focus-visible {
 /* Keyboard focus indicator — visible for users who Tab through controls,
  * invisible for mouse-only users (where :focus-visible evaluates false). */
 button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
 [role="tab"]:focus-visible,
+[role="button"]:focus-visible,
+[role="link"]:focus-visible,
+[role="switch"]:focus-visible,
+[role="menuitem"]:focus-visible,
+[tabindex]:focus-visible,
 [data-testid^="file-tree-row-"]:focus-visible {
   outline: 2px solid var(--accent-500);
   outline-offset: 1px;
+  border-radius: 4px;
+}
+
+/* Inputs and textareas have their own border, so the outline can collide.
+ * Switch to a glow ring for those instead. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-glow), 0 0 0 1px var(--accent-500);
 }
 
 /* Hoverable row pattern used by file-tree + workspace rows + nav entries. */

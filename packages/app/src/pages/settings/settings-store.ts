@@ -15,6 +15,20 @@ export interface BrowserSettings {
   defaultUrl: string
 }
 
+export interface ProviderKeys {
+  anthropic: string
+  openai: string
+  google: string
+  groq: string
+}
+
+export interface AgentModels {
+  claude: string
+  codex: string
+  gemini: string
+  cursor: string
+}
+
 export type DevTab = "console" | "network"
 
 export function visibleDevTabs(browser: BrowserSettings): DevTab[] {
@@ -135,6 +149,15 @@ export interface SettingsState {
   // Agents
   agents: AgentVisibility
 
+  // Models — default per-agent model identifier (used by agent launchers / future model picker)
+  agentModels: AgentModels
+
+  // Providers — bring-your-own-key credentials kept locally (never sent off-device by Coda itself)
+  providerKeys: ProviderKeys
+
+  // Permissions — newline-separated glob/path/command patterns the agent must refuse
+  deniedPatterns: string
+
   // Updates
   updatesChannel: "stable" | "beta"
 
@@ -169,6 +192,18 @@ export const DEFAULT_SETTINGS: SettingsState = {
   },
 
   agents: { claude: true, codex: true, gemini: true, cursor: true },
+
+  agentModels: {
+    claude: "claude-opus-4-7",
+    codex: "gpt-5-codex",
+    gemini: "gemini-2.5-pro",
+    cursor: "auto",
+  },
+
+  providerKeys: { anthropic: "", openai: "", google: "", groq: "" },
+
+  deniedPatterns: "",
+
   updatesChannel: "stable",
   githubPat: "",
 }
@@ -186,6 +221,8 @@ function read(): SettingsState {
       ...parsed,
       agents: { ...DEFAULT_SETTINGS.agents, ...(parsed.agents ?? {}) },
       browser: { ...DEFAULT_SETTINGS.browser, ...(parsed.browser ?? {}) },
+      agentModels: { ...DEFAULT_SETTINGS.agentModels, ...(parsed.agentModels ?? {}) },
+      providerKeys: { ...DEFAULT_SETTINGS.providerKeys, ...(parsed.providerKeys ?? {}) },
     }
   } catch {
     return DEFAULT_SETTINGS
@@ -220,3 +257,38 @@ export function updateBrowser(patch: Partial<BrowserSettings>): void {
   setSettings(next)
   write(next)
 }
+
+export function updateProviderKeys(patch: Partial<ProviderKeys>): void {
+  const next = { ...settings(), providerKeys: { ...settings().providerKeys, ...patch } }
+  setSettings(next)
+  write(next)
+}
+
+export function updateAgentModels(patch: Partial<AgentModels>): void {
+  const next = { ...settings(), agentModels: { ...settings().agentModels, ...patch } }
+  setSettings(next)
+  write(next)
+}
+
+export const MODEL_CATALOG: { agent: keyof AgentModels; label: string; models: string[] }[] = [
+  {
+    agent: "claude",
+    label: "Claude Code",
+    models: ["claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
+  },
+  {
+    agent: "codex",
+    label: "Codex",
+    models: ["gpt-5-codex", "gpt-5", "gpt-4.1", "gpt-4o"],
+  },
+  {
+    agent: "gemini",
+    label: "Gemini",
+    models: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-1.5-pro"],
+  },
+  {
+    agent: "cursor",
+    label: "Cursor",
+    models: ["auto", "claude-opus-4-7", "gpt-5-codex"],
+  },
+]

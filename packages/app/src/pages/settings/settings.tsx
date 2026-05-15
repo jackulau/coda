@@ -2,7 +2,7 @@ import {
   Globe,
   Keyboard,
   Monitor,
-  Paintbrush,
+  type Paintbrush,
   Settings2,
   Shield,
   Sparkles,
@@ -12,6 +12,7 @@ import {
 import { type Component, For, Show, createSignal, onCleanup, onMount } from "solid-js"
 import { AGENTS } from "../../components/agent-logos"
 import {
+  type AgentModels,
   type AgentVisibility,
   type AppearanceMode,
   type BrowserSettings,
@@ -22,13 +23,17 @@ import {
   type FontFamily,
   LANGUAGE_OPTIONS,
   type Language,
+  MODEL_CATALOG,
+  type ProviderKeys,
   SCROLLBACK_OPTIONS,
   type SettingsState,
   type SidebarPosition,
   THEME_OPTIONS,
   type ThemeId,
+  updateAgentModels,
   updateAgents,
   updateBrowser,
+  updateProviderKeys,
   updateSettings,
   useSettings,
 } from "./settings-store"
@@ -46,7 +51,6 @@ type SectionId =
   | "models"
   | "providers"
   | "permissions"
-  | "skills"
 
 interface NavItem {
   id: SectionId
@@ -65,7 +69,6 @@ const SERVER_NAV: NavItem[] = [
   { id: "models", label: "Models", Icon: Sparkles },
   { id: "providers", label: "Providers", Icon: Monitor },
   { id: "permissions", label: "Permissions", Icon: Shield },
-  { id: "skills", label: "Skills", Icon: Paintbrush },
 ]
 
 export const SettingsPage: Component<Props> = (props) => {
@@ -494,72 +497,98 @@ export const SettingsPage: Component<Props> = (props) => {
         <SectionPane id="models" active={active()}>
           <SectionTitle>Models</SectionTitle>
           <p style={hintStyle}>
-            Configure which AI models each agent uses. Set default models, temperature, and context
-            window preferences per workspace.
+            Pick the default model each agent launches with. Coda passes this through when it spawns
+            the agent process.
           </p>
-          <ComingSoonSection
-            icon={Sparkles}
-            title="Model configuration"
-            lines={[
-              "Choose default models for each agent (Claude, Codex, Gemini, Cursor)",
-              "Set temperature, max tokens, and context window per model",
-              "Compare model performance across your coding tasks",
-            ]}
-          />
+          <For each={MODEL_CATALOG}>
+            {(g) => (
+              <Row label={g.label} description={`Default model identifier passed to ${g.label}.`}>
+                <Select
+                  testId={`settings-model-${g.agent}`}
+                  value={settings().agentModels[g.agent] ?? DEFAULT_SETTINGS.agentModels[g.agent]}
+                  options={g.models.map((m) => ({ id: m, label: m }))}
+                  onChange={(v) => updateAgentModels({ [g.agent]: v } as Partial<AgentModels>)}
+                  mono
+                />
+              </Row>
+            )}
+          </For>
         </SectionPane>
 
         {/* ── Providers ── */}
         <SectionPane id="providers" active={active()}>
           <SectionTitle>Providers</SectionTitle>
           <p style={hintStyle}>
-            Manage API providers and their credentials. Bring your own keys or connect through
-            OAuth.
+            Bring-your-own-key credentials kept in this profile only. Coda never transmits these
+            keys itself — agents read them at launch and call the provider directly.
           </p>
-          <ComingSoonSection
-            icon={Monitor}
-            title="Provider management"
-            lines={[
-              "Add API keys for Anthropic, OpenAI, Google, and more",
-              "OAuth-based authentication for supported providers",
-              "Usage tracking and rate-limit monitoring per provider",
-            ]}
-          />
+          <Row
+            label="Anthropic API key"
+            description="Used by Claude Code when running outside the official CLI."
+          >
+            <SecretField
+              testId="settings-provider-anthropic"
+              value={settings().providerKeys.anthropic}
+              placeholder="sk-ant-…"
+              onSave={(v) => updateProviderKeys({ anthropic: v.trim() })}
+            />
+          </Row>
+          <Row label="OpenAI API key" description="Used by Codex CLI and OpenAI-compatible tools.">
+            <SecretField
+              testId="settings-provider-openai"
+              value={settings().providerKeys.openai}
+              placeholder="sk-…"
+              onSave={(v) => updateProviderKeys({ openai: v.trim() })}
+            />
+          </Row>
+          <Row label="Google AI Studio key" description="Used by Gemini CLI.">
+            <SecretField
+              testId="settings-provider-google"
+              value={settings().providerKeys.google}
+              placeholder="AIza…"
+              onSave={(v) => updateProviderKeys({ google: v.trim() })}
+            />
+          </Row>
+          <Row label="Groq API key" description="Optional fast-inference fallback.">
+            <SecretField
+              testId="settings-provider-groq"
+              value={settings().providerKeys.groq}
+              placeholder="gsk_…"
+              onSave={(v) => updateProviderKeys({ groq: v.trim() })}
+            />
+          </Row>
         </SectionPane>
 
         {/* ── Permissions ── */}
         <SectionPane id="permissions" active={active()}>
           <SectionTitle>Permissions</SectionTitle>
           <p style={hintStyle}>
-            Control what the coding agent is allowed to do — file access, terminal commands, and
-            network calls.
+            Glob, path, or command patterns the coding agent must refuse. One per line. Agents read
+            this list at launch and apply it as a hard denylist.
           </p>
-          <ComingSoonSection
-            icon={Shield}
-            title="Permission controls"
-            lines={[
-              "Allow or deny file read/write by path pattern",
-              "Restrict terminal commands and executables",
-              "Control network access and allowed domains",
-            ]}
-          />
-        </SectionPane>
-
-        {/* ── Skills ── */}
-        <SectionPane id="skills" active={active()}>
-          <SectionTitle>Skills</SectionTitle>
-          <p style={hintStyle}>
-            Browse and manage reusable skills the coding agent can invoke — linting, testing,
-            deploying, and more.
-          </p>
-          <ComingSoonSection
-            icon={Paintbrush}
-            title="Skill registry"
-            lines={[
-              "Discover built-in skills for common workflows",
-              "Create custom skills from prompts or scripts",
-              "Enable or disable skills per workspace",
-            ]}
-          />
+          <Row label="Denylist" description="Examples: `**/.env`, `rm -rf /`, `~/.ssh/*`.">
+            <textarea
+              data-testid="settings-denylist"
+              value={settings().deniedPatterns}
+              placeholder={"**/.env*\nrm -rf /\n~/.ssh/*"}
+              spellcheck={false}
+              onChange={(e) => update({ deniedPatterns: e.currentTarget.value })}
+              style={{
+                width: "320px",
+                "min-height": "100px",
+                padding: "8px 10px",
+                background: "var(--bg-input)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--border-default)",
+                "border-radius": "4px",
+                "font-family": "var(--font-mono)",
+                "font-size": "12px",
+                "line-height": "1.5",
+                resize: "vertical",
+                outline: "none",
+              }}
+            />
+          </Row>
         </SectionPane>
       </section>
 
@@ -777,70 +806,75 @@ const Toggle: Component<{
   </button>
 )
 
-const ComingSoonSection: Component<{
-  icon: typeof Sparkles
-  title: string
-  lines: string[]
-}> = (props) => (
-  <div
-    style={{
-      padding: "24px",
-      "border-radius": "8px",
-      border: "1px solid var(--border-subtle)",
-      "background-color": "var(--bg-1)",
-    }}
-  >
-    <div style={{ display: "flex", "align-items": "center", gap: "10px", "margin-bottom": "16px" }}>
-      <div
+const SecretField: Component<{
+  testId: string
+  value: string
+  placeholder?: string
+  onSave: (value: string) => void
+}> = (props) => {
+  const [local, setLocal] = createSignal(props.value)
+  const [revealed, setRevealed] = createSignal(false)
+  const dirty = () => local() !== props.value
+  return (
+    <div style={{ display: "flex", "align-items": "center", gap: "6px" }}>
+      <input
+        data-testid={props.testId}
+        type={revealed() ? "text" : "password"}
+        value={local()}
+        placeholder={props.placeholder}
+        autocomplete="off"
+        spellcheck={false}
+        onInput={(e) => setLocal(e.currentTarget.value)}
         style={{
-          width: "32px",
-          height: "32px",
-          "border-radius": "8px",
-          "background-color": "var(--bg-3)",
-          display: "flex",
-          "align-items": "center",
-          "justify-content": "center",
-          color: "var(--text-tertiary)",
+          width: "240px",
+          padding: "5px 8px",
+          background: "var(--bg-input)",
+          color: "var(--text-primary)",
+          border: "1px solid var(--border-default)",
+          "border-radius": "4px",
+          "font-family": "var(--font-mono)",
+          "font-size": "12px",
+          outline: "none",
+        }}
+      />
+      <button
+        type="button"
+        data-testid={`${props.testId}-reveal`}
+        aria-label={revealed() ? "Hide key" : "Reveal key"}
+        onClick={() => setRevealed((v) => !v)}
+        style={{
+          padding: "4px 8px",
+          background: "transparent",
+          border: "1px solid var(--border-default)",
+          color: "var(--text-secondary)",
+          "border-radius": "4px",
+          "font-size": "11px",
+          cursor: "pointer",
         }}
       >
-        <props.icon size={16} />
-      </div>
-      <div>
-        <div style={{ color: "var(--text-primary)", "font-size": "13px", "font-weight": "500" }}>
-          {props.title}
-        </div>
-        <div
-          style={{
-            color: "var(--accent-500)",
-            "font-size": "10px",
-            "font-weight": "600",
-            "text-transform": "uppercase",
-            "letter-spacing": "0.05em",
-          }}
-        >
-          Coming soon
-        </div>
-      </div>
+        {revealed() ? "Hide" : "Show"}
+      </button>
+      <button
+        type="button"
+        data-testid={`${props.testId}-save`}
+        disabled={!dirty()}
+        onClick={() => props.onSave(local())}
+        style={{
+          padding: "4px 10px",
+          background: dirty() ? "var(--accent-500)" : "transparent",
+          color: dirty() ? "#0a0a0a" : "var(--text-tertiary)",
+          border: dirty() ? "1px solid transparent" : "1px solid var(--border-default)",
+          "border-radius": "4px",
+          "font-size": "11px",
+          cursor: dirty() ? "pointer" : "default",
+          transition: "background-color var(--motion-fast), color var(--motion-fast)",
+        }}
+      >
+        Save
+      </button>
     </div>
-    <ul
-      style={{
-        margin: 0,
-        "padding-left": "20px",
-        display: "flex",
-        "flex-direction": "column",
-        gap: "6px",
-      }}
-    >
-      <For each={props.lines}>
-        {(line) => (
-          <li style={{ color: "var(--text-secondary)", "font-size": "12px", "line-height": "1.5" }}>
-            {line}
-          </li>
-        )}
-      </For>
-    </ul>
-  </div>
-)
+  )
+}
 
 const PatField: Component<{ value: string; onSave: (t: string) => void }> = (props) => {
   const [local, setLocal] = createSignal(props.value)

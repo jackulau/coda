@@ -54,18 +54,39 @@ function dirname(path: string): string {
 
 export const CommandPalette: Component<Props> = (props) => {
   const [query, setQuery] = createSignal("")
+  // Debounced mirror — ranking only runs on this, smoothing keystroke storms.
+  const [debouncedQuery, setDebouncedQuery] = createSignal("")
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined
   const [activeIndex, setActiveIndex] = createSignal(0)
+
+  const setQueryDebounced = (q: string) => {
+    setQuery(q)
+    if (debounceTimer !== undefined) clearTimeout(debounceTimer)
+    // Short query (≤2 chars) gets the immediate path for snappy first results.
+    if (q.length <= 2) {
+      setDebouncedQuery(q)
+      return
+    }
+    debounceTimer = setTimeout(() => {
+      setDebouncedQuery(q)
+    }, 80)
+  }
+
+  onCleanup(() => {
+    if (debounceTimer !== undefined) clearTimeout(debounceTimer)
+  })
 
   const mode = (): Mode => (query().startsWith(">") ? "commands" : "files")
 
-  const commandQuery = () => (mode() === "commands" ? query().slice(1).trim() : query())
+  const commandQuery = () =>
+    mode() === "commands" ? debouncedQuery().slice(1).trim() : debouncedQuery()
 
   const rankedCommands = createMemo(() =>
     Palette.rank(props.commands, commandQuery(), (c) => `${c.label} ${c.id}`).slice(0, 50),
   )
 
   const rankedFiles = createMemo(() => {
-    const q = query().trim()
+    const q = debouncedQuery().trim()
     if (!q || mode() === "commands") return []
     const allFiles = props.files ?? []
     if (allFiles.length === 0) return []
@@ -155,7 +176,7 @@ export const CommandPalette: Component<Props> = (props) => {
               value={query()}
               autofocus
               onInput={(e) => {
-                setQuery(e.currentTarget.value)
+                setQueryDebounced(e.currentTarget.value)
                 setActiveIndex(0)
               }}
               style={{
