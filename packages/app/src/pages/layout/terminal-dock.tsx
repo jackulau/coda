@@ -1,8 +1,9 @@
+import { AgentQueue, type PendingMessage } from "@coda/core/agent-queue"
 import { listen } from "@tauri-apps/api/event"
 import { FitAddon } from "@xterm/addon-fit"
 import { Terminal } from "@xterm/xterm"
 import xtermCss from "@xterm/xterm/css/xterm.css?inline"
-import { Rows2, X } from "lucide-solid"
+import { ChevronUp, Rows2, Send, X } from "lucide-solid"
 import {
   type Component,
   For,
@@ -21,6 +22,8 @@ import { useWorkspaces } from "../../context/workspace"
 import { ptyKill, ptyResize, ptySpawn, ptyWrite } from "../../lib/ipc"
 import { useSettings } from "../settings/settings-store"
 
+const IDLE_MS = 1500
+
 /**
  * Terminal dock — multi-tab panel with per-agent quick-launch, plus an
  * optional canvas mode where terminals become free-floating windows on a
@@ -34,6 +37,21 @@ export const TerminalDock: Component<{ onClose: () => void }> = (props) => {
   let rootRef: HTMLElement | undefined
 
   injectCss()
+
+  // Lazy mount — only allocate xterm + PTY for tabs the user has actually
+  // visited. Once mounted, panes stay alive so scrollback + agent state
+  // survive tab switches.
+  const [mountedTabIds, setMountedTabIds] = createSignal<ReadonlySet<string>>(new Set())
+  createEffect(() => {
+    const id = tabs.activeId()
+    if (!id) return
+    setMountedTabIds((prev) => {
+      if (prev.has(id)) return prev
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+  })
 
   const enabledAgents = createMemo(() => {
     const vis = settings().agents
@@ -239,7 +257,9 @@ export const TerminalDock: Component<{ onClose: () => void }> = (props) => {
           >
             <For each={tabs.tabs()}>
               {(tab) => (
-                <TerminalPane tab={tab} visible={tabs.activeId() === tab.id} mode="docked" />
+                <Show when={mountedTabIds().has(tab.id)}>
+                  <TerminalPane tab={tab} visible={tabs.activeId() === tab.id} mode="docked" />
+                </Show>
               )}
             </For>
             <Show when={tabs.tabs().length === 0}>
@@ -487,6 +507,35 @@ const TerminalPane: Component<{
   let unlistenExit: (() => void) | null = null
   let resizeObs: ResizeObserver | null = null
   let prevVisible = true
+  let idleTimer: ReturnType<typeof setTimeout> | null = null
+
+  const queue = new AgentQueue()
+  const [pending, setPending] = createSignal<readonly PendingMessage[]>([])
+  const [busy, setBusyState] = createSignal(false)
+  const off = queue.subscribe(() => {
+    setPending(queue.list())
+    setBusyState(queue.busy())
+  })
+  onCleanup(off)
+
+  const sendToPty = async (text: string) => {
+    if (!sessionId) throw new Error("pty not ready")
+    await ptyWrite(sessionId, `${text}\r`)
+  }
+
+  const tryDrain = () => {
+    void queue.drain(sendToPty).catch(() => {})
+  }
+
+  const markBusy = () => {
+    queue.setBusy(true)
+    if (idleTimer !== null) clearTimeout(idleTimer)
+    idleTimer = setTimeout(() => {
+      idleTimer = null
+      queue.setBusy(false)
+      tryDrain()
+    }, IDLE_MS)
+  }
 
   const startPty = async () => {
     if (!term || !fit) return
@@ -509,6 +558,7 @@ const TerminalPane: Component<{
     unlistenData = await listen<{ data: string }>(`pty://${sessionId}/data`, (e) => {
       if (!term) return
       term.write(atobBytes(e.payload.data))
+      markBusy()
     })
     unlistenExit = await listen<{ code: number | null }>(`pty://${sessionId}/exit`, (e) => {
       if (!term) return
@@ -558,6 +608,7 @@ const TerminalPane: Component<{
   })
 
   onCleanup(() => {
+    if (idleTimer !== null) clearTimeout(idleTimer)
     resizeObs?.disconnect()
     unlistenData?.()
     unlistenExit?.()
@@ -583,23 +634,262 @@ const TerminalPane: Component<{
     prevVisible = nowVisible
   })
 
+  const onEnqueue = (text: string) => {
+    if (text.length === 0) return
+    queue.enqueue(text)
+    tryDrain()
+  }
+
   return (
     <div
-      ref={(el) => {
-        mountRef = el
-      }}
       data-testid={`terminal-pane-${props.tab.id}`}
       data-agent={props.tab.kind}
       style={{
         position: props.mode === "docked" ? "absolute" : "relative",
         inset: props.mode === "docked" ? "0" : undefined,
         height: props.mode === "docked" ? undefined : "100%",
-        display: props.visible ? "block" : "none",
-        padding: "4px 8px",
+        display: props.visible ? "flex" : "none",
+        "flex-direction": "column",
         "background-color": "#0a0a0a",
         overflow: "hidden",
       }}
-    />
+    >
+      <div
+        ref={(el) => {
+          mountRef = el
+        }}
+        data-testid={`terminal-pane-xterm-${props.tab.id}`}
+        style={{
+          flex: "1 1 auto",
+          "min-height": "0",
+          padding: "4px 8px",
+          overflow: "hidden",
+        }}
+      />
+      <AgentComposer
+        tabId={props.tab.id}
+        agentKind={props.tab.kind}
+        pending={pending()}
+        busy={busy()}
+        onEnqueue={onEnqueue}
+        onCancel={(id) => queue.cancel(id)}
+      />
+    </div>
+  )
+}
+
+const AgentComposer: Component<{
+  tabId: string
+  agentKind: AgentKind
+  pending: readonly PendingMessage[]
+  busy: boolean
+  onEnqueue: (text: string) => void
+  onCancel: (id: string) => void
+}> = (props) => {
+  const [draft, setDraft] = createSignal("")
+  const [expanded, setExpanded] = createSignal(false)
+  let inputRef: HTMLTextAreaElement | undefined
+
+  const submit = () => {
+    const text = draft().replace(/\s+$/, "")
+    if (text.length === 0) return
+    props.onEnqueue(text)
+    setDraft("")
+    if (inputRef) inputRef.style.height = "auto"
+  }
+
+  const autosize = (el: HTMLTextAreaElement) => {
+    el.style.height = "auto"
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+  }
+
+  return (
+    <div
+      data-testid={`agent-composer-${props.tabId}`}
+      data-busy={props.busy ? "true" : "false"}
+      style={{
+        display: "flex",
+        "flex-direction": "column",
+        "border-top": "1px solid var(--border-subtle)",
+        "background-color": "var(--bg-1)",
+      }}
+    >
+      <Show when={expanded() && props.pending.length > 0}>
+        <ul
+          data-testid={`agent-queue-list-${props.tabId}`}
+          style={{
+            "list-style": "none",
+            margin: "0",
+            padding: "6px 8px",
+            "max-height": "120px",
+            overflow: "auto",
+            "border-bottom": "1px solid var(--border-subtle)",
+            "font-family": "var(--font-mono)",
+            "font-size": "11px",
+            color: "var(--text-secondary)",
+          }}
+        >
+          <For each={props.pending}>
+            {(m, i) => (
+              <li
+                style={{
+                  display: "flex",
+                  "align-items": "center",
+                  gap: "8px",
+                  padding: "3px 0",
+                }}
+              >
+                <span
+                  style={{
+                    color: "var(--text-tertiary)",
+                    "min-width": "16px",
+                  }}
+                >
+                  {i() + 1}.
+                </span>
+                <span
+                  style={{
+                    flex: "1 1 auto",
+                    "min-width": "0",
+                    overflow: "hidden",
+                    "text-overflow": "ellipsis",
+                    "white-space": "nowrap",
+                  }}
+                  title={m.text}
+                >
+                  {m.text}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Cancel queued message ${i() + 1}`}
+                  data-testid={`agent-queue-cancel-${m.id}`}
+                  onClick={() => props.onCancel(m.id)}
+                  style={{
+                    display: "inline-flex",
+                    "align-items": "center",
+                    "justify-content": "center",
+                    width: "18px",
+                    height: "18px",
+                    background: "transparent",
+                    border: "none",
+                    color: "var(--text-tertiary)",
+                    "border-radius": "3px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <X size={11} aria-hidden="true" />
+                </button>
+              </li>
+            )}
+          </For>
+        </ul>
+      </Show>
+      <div
+        style={{
+          display: "flex",
+          "align-items": "flex-end",
+          gap: "6px",
+          padding: "6px 8px",
+        }}
+      >
+        <textarea
+          ref={(el) => {
+            inputRef = el
+          }}
+          data-testid={`agent-composer-input-${props.tabId}`}
+          rows={1}
+          placeholder={
+            props.busy
+              ? `Queueing for ${agentMeta(props.agentKind).label}…`
+              : `Message ${agentMeta(props.agentKind).label} (Enter to send, Shift+Enter for newline)`
+          }
+          value={draft()}
+          onInput={(e) => {
+            setDraft(e.currentTarget.value)
+            autosize(e.currentTarget)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault()
+              submit()
+            }
+          }}
+          style={{
+            flex: "1 1 auto",
+            "min-width": "0",
+            resize: "none",
+            "max-height": "120px",
+            padding: "6px 8px",
+            "background-color": "var(--bg-input)",
+            color: "var(--text-primary)",
+            border: "1px solid var(--border-default)",
+            "border-radius": "4px",
+            "font-family": "var(--font-mono)",
+            "font-size": "12px",
+            "line-height": "1.4",
+            outline: "none",
+          }}
+        />
+        <button
+          type="button"
+          data-testid={`agent-composer-send-${props.tabId}`}
+          aria-label="Send / queue message"
+          title={props.busy ? "Agent busy — message will queue" : "Send"}
+          onClick={submit}
+          disabled={draft().trim().length === 0}
+          style={{
+            display: "inline-flex",
+            "align-items": "center",
+            "justify-content": "center",
+            width: "28px",
+            height: "28px",
+            background: draft().trim().length === 0 ? "transparent" : "var(--accent-500)",
+            color: draft().trim().length === 0 ? "var(--text-tertiary)" : "#0a0a0a",
+            border:
+              draft().trim().length === 0
+                ? "1px solid var(--border-default)"
+                : "1px solid transparent",
+            "border-radius": "4px",
+            cursor: draft().trim().length === 0 ? "default" : "pointer",
+            transition: "background-color var(--motion-fast), color var(--motion-fast)",
+          }}
+        >
+          <Send size={13} aria-hidden="true" />
+        </button>
+        <Show when={props.pending.length > 0}>
+          <button
+            type="button"
+            data-testid={`agent-queue-toggle-${props.tabId}`}
+            aria-label={`${props.pending.length} queued — ${expanded() ? "hide" : "show"} list`}
+            onClick={() => setExpanded((v) => !v)}
+            style={{
+              display: "inline-flex",
+              "align-items": "center",
+              gap: "4px",
+              height: "28px",
+              padding: "0 8px",
+              background: "var(--bg-2)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--border-default)",
+              "border-radius": "4px",
+              "font-size": "11px",
+              "font-variant-numeric": "tabular-nums",
+              cursor: "pointer",
+            }}
+          >
+            <span>{props.pending.length} queued</span>
+            <ChevronUp
+              size={11}
+              aria-hidden="true"
+              style={{
+                transform: expanded() ? "rotate(0deg)" : "rotate(180deg)",
+                transition: "transform var(--motion-fast)",
+              }}
+            />
+          </button>
+        </Show>
+      </div>
+    </div>
   )
 }
 

@@ -149,6 +149,10 @@ export function applySettingsToDocument(
 
   // --- Font -----------------------------------------------------------
   el.style.setProperty("--font-mono", buildFontStack(settings.fontFamily))
+  el.style.setProperty("--font-size-base", `${settings.fontSize}px`)
+
+  // --- Reasoning summaries (consumed by agent timeline UIs) ----------
+  el.setAttribute("data-show-reasoning", settings.showReasoningSummaries ? "true" : "false")
 
   // --- Reduced motion -------------------------------------------------
   const osReduced =

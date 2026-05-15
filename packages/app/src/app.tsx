@@ -18,6 +18,7 @@ import { TerminalTabsProvider } from "./context/terminal-tabs"
 import { useToasts } from "./context/toasts"
 import { WorkspaceProvider, useWorkspaces } from "./context/workspace"
 import { applySettingsToDocument, centerOrder, sidebarOrder } from "./lib/apply-settings"
+import { setLocale } from "./lib/i18n"
 import { revealInFinder } from "./lib/ipc"
 import { CenterPanel } from "./pages/layout/center-panel"
 import { RightRail } from "./pages/layout/right-rail"
@@ -66,6 +67,10 @@ const Shell: Component = () => {
   createEffect(() => {
     const cleanup = applySettingsToDocument(settings())
     if (cleanup) onCleanup(cleanup)
+  })
+
+  createEffect(() => {
+    setLocale(settings().language)
   })
 
   const bridge = createShortcutBridge()

@@ -43,3 +43,7 @@ target/
 packages/desktop/src-tauri/gen/
 
 /packages/app/test-results/
+
+# Screenshots and test artifacts
+screenshot-*.png
+.playwright-mcp/

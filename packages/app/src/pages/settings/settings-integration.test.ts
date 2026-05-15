@@ -82,6 +82,19 @@ describe("Settings Integration", () => {
           defaultUrl: "https://example.com",
         },
         agents: { claude: false, codex: true, gemini: false, cursor: true },
+        agentModels: {
+          claude: "claude-sonnet-4-6",
+          codex: "gpt-5",
+          gemini: "gemini-2.5-pro",
+          cursor: "auto",
+        },
+        providerKeys: {
+          anthropic: "sk-ant-test",
+          openai: "sk-test",
+          google: "",
+          groq: "",
+        },
+        deniedPatterns: "**/.env*\n~/.ssh/*",
         updatesChannel: "beta",
         githubPat: "ghp_test123",
       }
@@ -200,6 +213,15 @@ describe("Settings Integration", () => {
         terminalStartupCommand: () => resolveStartupCommand("test", false),
         updatesChannel: () => {
           /* consumed by updates.tsx UI */
+        },
+        agentModels: () => {
+          /* consumed by agent launcher when spawning a model-backed agent */
+        },
+        providerKeys: () => {
+          /* consumed by agent launcher to set provider env vars */
+        },
+        deniedPatterns: () => {
+          /* consumed by agent runtime as a hard denylist */
         },
       }
 

@@ -2,6 +2,10 @@ import { CaseSensitive, FileCode, Regex, Search } from "lucide-solid"
 import { type Component, For, Show, createMemo, createSignal, onCleanup } from "solid-js"
 import type { SearchHit } from "../lib/ipc"
 import { searchFiles } from "../lib/ipc"
+import { computeWindow } from "../utils/file-tree-virtualizer"
+
+/** Hard render cap so a million-hit query doesn't blow up the DOM. */
+const MAX_RENDERED_HITS = 500
 
 interface Props {
   cwd?: string
@@ -50,22 +54,54 @@ export const SearchPage: Component<Props> = (props) => {
 
   const grouped = createMemo((): FileGroup[] => {
     const map = new Map<string, SearchHit[]>()
+    let total = 0
     for (const h of hits()) {
+      if (total >= MAX_RENDERED_HITS) break
       const arr = map.get(h.path)
       if (arr) arr.push(h)
       else map.set(h.path, [h])
+      total++
     }
     return Array.from(map.entries()).map(([path, hits]) => ({ path, hits }))
   })
 
+  type VirtualRow =
+    | { kind: "header"; group: FileGroup }
+    | { kind: "hit"; group: FileGroup; hit: SearchHit }
+
+  const ROW_HEIGHT = 24
+
+  const flatRows = createMemo((): VirtualRow[] => {
+    const out: VirtualRow[] = []
+    for (const g of grouped()) {
+      out.push({ kind: "header", group: g })
+      for (const hit of g.hits) out.push({ kind: "hit", group: g, hit })
+    }
+    return out
+  })
+
+  const [scrollTop, setScrollTop] = createSignal(0)
+  const [viewportHeight, setViewportHeight] = createSignal(400)
+
+  const window_ = createMemo(() =>
+    computeWindow(flatRows().length, ROW_HEIGHT, viewportHeight(), scrollTop(), 8),
+  )
+
+  const visibleRows = createMemo(() => {
+    const w = window_()
+    return flatRows().slice(w.startIndex, w.endIndex)
+  })
+
   const fileCount = () => grouped().length
   const hitCount = () => hits().length
+  const capped = () => hitCount() > MAX_RENDERED_HITS
 
   const summary = () => {
     const h = hitCount()
     const f = fileCount()
     if (h === 0) return ""
-    return `${h} result${h !== 1 ? "s" : ""} in ${f} file${f !== 1 ? "s" : ""}`
+    const base = `${h} result${h !== 1 ? "s" : ""} in ${f} file${f !== 1 ? "s" : ""}`
+    return capped() ? `${base} — showing first ${MAX_RENDERED_HITS}` : base
   }
 
   requestAnimationFrame(() => inputRef?.focus())
@@ -169,8 +205,23 @@ export const SearchPage: Component<Props> = (props) => {
         </div>
       </Show>
 
-      {/* Results */}
-      <div style={{ flex: "1 1 auto", overflow: "auto", padding: "0 0 12px" }}>
+      {/* Results — virtualized list */}
+      <div
+        ref={(el) => {
+          if (!el) return
+          const ro = new ResizeObserver(() => setViewportHeight(el.clientHeight))
+          ro.observe(el)
+          onCleanup(() => ro.disconnect())
+          setViewportHeight(el.clientHeight)
+        }}
+        onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+        style={{
+          flex: "1 1 auto",
+          overflow: "auto",
+          position: "relative",
+          padding: "0 0 12px",
+        }}
+      >
         <Show when={loading()}>
           <div
             style={{
@@ -225,86 +276,107 @@ export const SearchPage: Component<Props> = (props) => {
           </div>
         </Show>
 
-        <For each={grouped()}>
-          {(group) => (
-            <div data-testid={`search-group-${group.path}`}>
-              <div
-                style={{
-                  padding: "8px 16px 4px",
-                  display: "flex",
-                  "align-items": "center",
-                  gap: "6px",
-                }}
-              >
-                <FileCode size={12} style={{ color: "var(--text-tertiary)", "flex-shrink": "0" }} />
-                <span
-                  style={{
-                    "font-size": "12px",
-                    color: "var(--text-secondary)",
-                    "font-family": "var(--font-mono)",
-                    "white-space": "nowrap",
-                    overflow: "hidden",
-                    "text-overflow": "ellipsis",
-                  }}
-                >
-                  {group.path}
-                </span>
-                <span style={{ "font-size": "10px", color: "var(--text-tertiary)" }}>
-                  ({group.hits.length})
-                </span>
-              </div>
-              <For each={group.hits}>
-                {(hit) => (
-                  <button
-                    type="button"
-                    class="coda-row-hover"
-                    data-testid={`search-hit-${hit.path}-${hit.line}`}
-                    onClick={() => {
-                      const fullPath = props.cwd ? `${props.cwd}/${hit.path}` : hit.path
-                      props.onOpenFile?.(fullPath, hit.line)
-                    }}
-                    style={{
-                      width: "100%",
-                      padding: "3px 16px 3px 34px",
-                      "text-align": "left",
-                      background: "transparent",
-                      border: "none",
-                      color: "var(--text-primary)",
-                      "font-size": "12px",
-                      "font-family": "var(--font-mono)",
-                      cursor: "pointer",
-                      display: "flex",
-                      "align-items": "baseline",
-                      gap: "10px",
-                      "border-radius": "3px",
-                    }}
-                  >
-                    <span
+        <Show when={flatRows().length > 0}>
+          <div
+            data-testid="search-virtual-spacer"
+            style={{
+              position: "relative",
+              height: `${flatRows().length * ROW_HEIGHT}px`,
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                top: `${window_().offsetY}px`,
+                left: 0,
+                right: 0,
+              }}
+            >
+              <For each={visibleRows()}>
+                {(row) =>
+                  row.kind === "header" ? (
+                    <div
+                      data-testid={`search-group-${row.group.path}`}
                       style={{
-                        color: "var(--text-tertiary)",
-                        "font-size": "10px",
-                        "flex-shrink": "0",
-                        "min-width": "28px",
-                        "text-align": "right",
+                        height: `${ROW_HEIGHT}px`,
+                        padding: "0 16px",
+                        display: "flex",
+                        "align-items": "center",
+                        gap: "6px",
                       }}
                     >
-                      {hit.line}
-                    </span>
-                    <span
+                      <FileCode
+                        size={12}
+                        style={{ color: "var(--text-tertiary)", "flex-shrink": "0" }}
+                      />
+                      <span
+                        style={{
+                          "font-size": "12px",
+                          color: "var(--text-secondary)",
+                          "font-family": "var(--font-mono)",
+                          "white-space": "nowrap",
+                          overflow: "hidden",
+                          "text-overflow": "ellipsis",
+                        }}
+                      >
+                        {row.group.path}
+                      </span>
+                      <span style={{ "font-size": "10px", color: "var(--text-tertiary)" }}>
+                        ({row.group.hits.length})
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      class="coda-row-hover"
+                      data-testid={`search-hit-${row.hit.path}-${row.hit.line}`}
+                      onClick={() => {
+                        const fullPath = props.cwd ? `${props.cwd}/${row.hit.path}` : row.hit.path
+                        props.onOpenFile?.(fullPath, row.hit.line)
+                      }}
                       style={{
-                        "white-space": "pre",
-                        overflow: "hidden",
-                        "text-overflow": "ellipsis",
+                        height: `${ROW_HEIGHT}px`,
+                        width: "100%",
+                        padding: "0 16px 0 34px",
+                        "text-align": "left",
+                        background: "transparent",
+                        border: "none",
+                        color: "var(--text-primary)",
+                        "font-size": "12px",
+                        "font-family": "var(--font-mono)",
+                        cursor: "pointer",
+                        display: "flex",
+                        "align-items": "center",
+                        gap: "10px",
                       }}
                     >
-                      {hit.preview}
-                    </span>
-                  </button>
-                )}
+                      <span
+                        style={{
+                          color: "var(--text-tertiary)",
+                          "font-size": "10px",
+                          "flex-shrink": "0",
+                          "min-width": "28px",
+                          "text-align": "right",
+                        }}
+                      >
+                        {row.hit.line}
+                      </span>
+                      <span
+                        style={{
+                          "white-space": "pre",
+                          overflow: "hidden",
+                          "text-overflow": "ellipsis",
+                        }}
+                      >
+                        {row.hit.preview}
+                      </span>
+                    </button>
+                  )
+                }
               </For>
             </div>
-          )}
-        </For>
+          </div>
+        </Show>
       </div>
     </div>
   )
